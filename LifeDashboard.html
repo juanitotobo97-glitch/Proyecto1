@@ -166,7 +166,22 @@ const G3=({children})=>(<div style={{display:"grid",gridTemplateColumns:"repeat(
 /* === FITNESS === */
 const FitnessPage=()=>{
 const[flM,setFlM]=useState(null);const[compM,setCompM]=useState(false);
-const wPts=fl.filter(e=>e.weight).map(e=>({v:+e.weight,label:e.date.slice(5)}));const wAvg=movAvg(fl.filter(e=>e.weight),"weight");
+const[dateFrom,setDateFrom]=useState("");const[dateTo,setDateTo]=useState("");
+const ffl=fl.filter(e=>{if(dateFrom&&e.date<dateFrom)return false;if(dateTo&&e.date>dateTo)return false;return true});
+const fitCards=S.fitCards||["weight","waist","cal","steps"];
+const setCard=(idx,mid)=>{const nc=[...fitCards];nc[idx]=mid;sv({...D,settings:{...S,fitCards:nc}})};
+const FMET=[
+{id:"weight",lb:"Peso",em:"⚖️",unit:"kg",color:C.lime,calc:d=>{const l=d.filter(e=>e.weight);return l.length?(+l[l.length-1].weight).toFixed(1):"—"},delta:d=>{const l=d.filter(e=>e.weight);if(l.length<2)return null;return{v:(+l[0].weight-(+l[l.length-1].weight)).toFixed(1),c:C.green,pre:"↓"}}},
+{id:"waist",lb:"Cintura",em:"📏",unit:"cm",color:C.cyan,calc:d=>{const l=d.filter(e=>e.waist);return l.length?(+l[l.length-1].waist).toFixed(1):"—"},delta:d=>{const l=d.filter(e=>e.waist);if(l.length<2)return null;return{v:(+l[0].waist-(+l[l.length-1].waist)).toFixed(1),c:C.green,pre:"↓"}}},
+{id:"cal",lb:"Prom Cal",em:"🔥",unit:"kcal",color:C.orange,calc:d=>avg(d.filter(e=>+e.cal>0),"cal"),delta:null},
+{id:"steps",lb:"Prom Pasos",em:"👟",unit:"pasos",color:C.purple,calc:d=>(+avg(d.filter(e=>+e.steps>0),"steps")).toLocaleString(),delta:null},
+{id:"prot",lb:"Prom Prot",em:"🥩",unit:"g",color:C.blue,calc:d=>avg(d.filter(e=>+e.prot>0),"prot"),delta:null},
+{id:"fat",lb:"Prom Grasa",em:"🥑",unit:"g",color:C.red,calc:d=>avg(d.filter(e=>+e.fat>0),"fat"),delta:null},
+{id:"carbs",lb:"Prom Carbos",em:"🍚",unit:"g",color:C.green,calc:d=>avg(d.filter(e=>+e.carbs>0),"carbs"),delta:null},
+{id:"sugar",lb:"Prom Azúcar",em:"🍬",unit:"g",color:C.pink,calc:d=>avg(d.filter(e=>+e.sugar>0),"sugar"),delta:null},
+{id:"sleep",lb:"Prom Sueño",em:"😴",unit:"hrs",color:C.cyan,calc:d=>{const s=d.filter(e=>+e.sleep>0);return s.length?(s.reduce((a,x)=>a+(+x.sleep||0),0)/s.length).toFixed(1):"—"},delta:null}
+];
+const wPts=ffl.filter(e=>e.weight).map(e=>({v:+e.weight,label:e.date.slice(5)}));const wAvg=movAvg(ffl.filter(e=>e.weight),"weight");
 
 const FlModal=({idx,onClose})=>{
 const ex=idx!==null?fl[idx]:null;
@@ -206,12 +221,30 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}><button style={z.btn(true)} onClick={()=>setFlM("new")}>+ Registro</button><button style={z.btnS(false)} onClick={()=>setCompM(true)}>⚙ Intervalos</button></div></div>
 <G3>{[["🔥 Cal",getDT("dt2").cal,"kcal",C.orange],["🥩 Prot",getDT("dt2").prot+"g","g",C.blue],["🥑 Grasa",getDT("dt2").fat+"g","g",C.red],["🍚 Carbos",getDT("dt2").carbs+"g","g",C.green],["🍬 Azúcar","≤"+getDT("dt2").sugar+"g","g",C.pink],["💪 Entrenos",S.trainingPerWeek+"x","sem",C.lime]].map(([l,v,u,c],i)=><div key={i} style={z.card}><div style={{...z.lb,color:c}}>{l}</div><div style={{fontFamily:"monospace",fontSize:"1.1rem",fontWeight:700}}>{v}</div><div style={{fontSize:"0.6rem",color:C.t3}}>{u}</div></div>)}</G3>
 <div style={{...z.card,padding:"12px 16px",marginTop:4}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{...z.lb,marginBottom:0}}>Progreso</span><span style={{fontFamily:"monospace",fontSize:"0.72rem",color:C.lime}}>Día {Math.min(dayN,totalDays)}/{totalDays} — {prog}%</span></div><div style={{width:"100%",height:7,background:C.bg3,borderRadius:100,overflow:"hidden"}}><div style={{height:"100%",borderRadius:100,width:`${prog}%`,background:`linear-gradient(90deg,${C.lime},#8aff00)`}}/></div></div>
-<G3><div style={z.card}><div style={z.lb}>Peso</div><div style={z.big}>{curW}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kg</div><div style={z.delta(C.green)}>↓ {wLost}</div></div>
-<div style={z.card}><div style={z.lb}>Cintura</div><div style={z.big}>{curWaist}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>cm</div><div style={z.delta(C.green)}>↓ {(S.startWaist-curWaist).toFixed(1)}</div></div>
-<div style={z.card}><div style={z.lb}>Prom Cal</div><div style={z.big}>{avg(fl.filter(e=>+e.cal>0),"cal")}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kcal</div></div>
-<div style={z.card}><div style={z.lb}>Prom Pasos</div><div style={z.big}>{(+avg(fl.filter(e=>+e.steps>0),"steps")).toLocaleString()}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>pasos</div></div></G3>
+<div style={{...z.card,padding:"10px 14px",marginTop:4,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+<span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<label style={{fontSize:"0.65rem",color:C.t3}}>Desde</label>
+<input type="date" style={{...z.inpM,padding:"4px 8px",fontSize:"0.7rem",maxWidth:140,colorScheme:"dark"}} value={dateFrom} onChange={e=>setDateFrom(e.target.value)}/>
+</div>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<label style={{fontSize:"0.65rem",color:C.t3}}>Hasta</label>
+<input type="date" style={{...z.inpM,padding:"4px 8px",fontSize:"0.7rem",maxWidth:140,colorScheme:"dark"}} value={dateTo} onChange={e=>setDateTo(e.target.value)}/>
+</div>
+{(dateFrom||dateTo)&&<button style={{...z.btnS(false),padding:"4px 10px",fontSize:"0.65rem"}} onClick={()=>{setDateFrom("");setDateTo("")}}>✕ Reset</button>}
+{(dateFrom||dateTo)&&<span style={{fontSize:"0.63rem",color:C.lime,fontWeight:600}}>{ffl.length} registros</span>}
+</div>
+<G3>{fitCards.map((mid,ci)=>{const m=FMET.find(x=>x.id===mid)||FMET[0];const val=m.calc(ffl);const dt=m.delta?m.delta(ffl):null;return(<div key={ci} style={z.card}>
+<div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4}}>
+<select style={{background:"transparent",border:"none",color:m.color,fontSize:"0.62rem",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",cursor:"pointer",padding:0,fontFamily:"inherit",outline:"none",appearance:"auto",WebkitAppearance:"menulist",colorScheme:"dark",maxWidth:"100%"}} value={mid} onChange={e=>setCard(ci,e.target.value)}>
+{FMET.map(o=><option key={o.id} value={o.id}>{o.em} {o.lb}</option>)}
+</select></div>
+<div style={z.big}>{val}</div>
+<div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>{m.unit}</div>
+{dt&&<div style={z.delta(dt.c)}>{dt.pre} {dt.v}</div>}
+</div>)})}</G3>
 <G2><div style={z.card}><div style={{display:"flex",justifyContent:"space-between"}}><div style={z.lb}>Peso</div><div style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></div></div><Chart pts={wPts} pts2={wAvg} color={C.lime} color2={C.orange}/></div>
-<div style={z.card}><div style={z.lb}>Cintura</div><Chart pts={fl.filter(e=>e.waist).map(e=>({v:+e.waist,label:e.date.slice(5)}))} color={C.cyan}/></div></G2>
+<div style={z.card}><div style={z.lb}>Cintura</div><Chart pts={ffl.filter(e=>e.waist).map(e=>({v:+e.waist,label:e.date.slice(5)}))} color={C.cyan}/></div></G2>
 <div style={z.card}><div style={z.lb}>🎯 Macros por Tipo de Día</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:500}}><thead><tr>{["Tipo","Cal","Prot","Carbos","Grasa","Azúcar","Rango Cal"].map(h=><th key={h} style={z.th}>{h}</th>)}</tr></thead>
 <tbody>{dayTypes.map(t=>(<tr key={t.id}><td style={{...z.td,fontWeight:600}}>{t.emoji} {t.name}</td><td style={{...z.td,fontFamily:"monospace"}}>{t.cal}</td><td style={{...z.td,fontFamily:"monospace"}}>{t.prot}g</td><td style={{...z.td,fontFamily:"monospace"}}>{t.carbs}g</td><td style={{...z.td,fontFamily:"monospace"}}>{t.fat}g</td><td style={{...z.td,fontFamily:"monospace"}}>≤{t.sugar}g</td><td style={{...z.td,fontFamily:"monospace",color:C.orange}}>{t.calMin}–{t.calMax}</td></tr>))}</tbody></table></div></div>
 <div style={{...z.card,padding:"10px 16px",display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
@@ -221,7 +254,7 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <span style={{fontSize:"0.68rem",color:C.t3}}>DÍA✓=3/4</span></div>
 <div style={z.card}><div style={z.lb}>📊 Progreso Semanal</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:750}}>
 <thead><tr>{["Fecha","Tipo","Peso","Cintura","Cal","Prot","Grasa","Carbos","Azúcar","Pasos","P✓","G✓","C✓","S✓","K✓","DÍA"].map(h=><th key={h} style={{...z.th,padding:"5px 3px"}}>{h}</th>)}</tr></thead>
-<tbody>{fl.map((e,i)=>{const comp=chkComp(e);const dt=getDT(e.dayType);return(<tr key={i} style={{cursor:"pointer"}} onClick={()=>setFlM(i)}>
+<tbody>{ffl.map((e,i)=>{const oi=fl.indexOf(e);const comp=chkComp(e);const dt=getDT(e.dayType);return(<tr key={oi} style={{cursor:"pointer"}} onClick={()=>setFlM(oi)}>
 <td style={{...z.td,fontFamily:"monospace",fontSize:"0.68rem"}}>{e.date.slice(5)}</td><td style={z.td}>{dt.emoji}</td>
 <td style={{...z.td,fontFamily:"monospace",fontWeight:600}}>{e.weight||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.waist||"—"}</td>
 <td style={{...z.td,fontFamily:"monospace"}}>{e.cal||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.prot||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.fat||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.carbs||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.sugar||"—"}</td>
@@ -229,7 +262,7 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 {[comp.p,comp.g,comp.c,comp.s,comp.k].map((v,j)=><td key={j} style={{...z.td,textAlign:"center"}}><span style={{color:v?C.green:C.red,fontWeight:700}}>{v?"✓":"✗"}</span></td>)}
 <td style={{...z.td,textAlign:"center"}}><span style={{color:comp.day?C.green:C.red,fontWeight:800,fontSize:"0.85rem"}}>{comp.day?"✓":"✗"}</span></td>
 </tr>)})}</tbody></table></div></div>
-{fl.filter(e=>e.notes).length>0&&<div style={z.card}><div style={z.lb}>📝 Notas</div>{fl.filter(e=>e.notes).slice(-5).reverse().map((e,i)=>(<div key={i} style={{padding:"7px 0",borderBottom:`1px solid ${C.b1}`}}><span style={{fontFamily:"monospace",fontSize:"0.65rem",color:C.t3}}>{e.date}</span> {getDT(e.dayType).emoji}<div style={{fontSize:"0.8rem",color:C.t1,marginTop:3}}>{e.notes}</div></div>))}</div>}
+{ffl.filter(e=>e.notes).length>0&&<div style={z.card}><div style={z.lb}>📝 Notas</div>{ffl.filter(e=>e.notes).slice(-5).reverse().map((e,i)=>(<div key={i} style={{padding:"7px 0",borderBottom:`1px solid ${C.b1}`}}><span style={{fontFamily:"monospace",fontSize:"0.65rem",color:C.t3}}>{e.date}</span> {getDT(e.dayType).emoji}<div style={{fontSize:"0.8rem",color:C.t1,marginTop:3}}>{e.notes}</div></div>))}</div>}
 {flM==="new"&&<FlModal idx={null} onClose={()=>setFlM(null)}/>}
 {typeof flM==="number"&&<FlModal idx={flM} onClose={()=>setFlM(null)}/>}
 {compM&&<CompEditor onClose={()=>setCompM(false)}/>}
