@@ -309,11 +309,20 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 /* === HABITS === */
 const HabitsPage=()=>{
 const[editH,setEditH]=useState(null);const[hf,setHf]=useState(null);const activeH=habits.filter(h=>h.active);const wk=getWk();
+const[hDateFrom,setHDateFrom]=useState("");const[hDateTo,setHDateTo]=useState("");
+const hasHFilter=hDateFrom||hDateTo;
 const openHab=idx=>{setEditH(idx);setHf({...habits[idx]})};
 const saveHab=()=>{if(editH!==null&&hf)updH(editH,hf);setEditH(null);setHf(null)};
 const closeHab=()=>{setEditH(null);setHf(null)};
+/* Generate date range for filter */
+const getDateRange=(from,to)=>{const dates=[];const s=new Date(from);const e=new Date(to);for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1))dates.push(fmtD(new Date(d)));return dates};
+const filteredDates=hasHFilter?getDateRange(hDateFrom||"2020-01-01",hDateTo||todayS()):null;
 const wkCnt=activeH.map(h=>{let c=0;wk.forEach(dt=>{if(hw[`${dt}_${h.id}`])c++});return{id:h.id,c}});
 const totWk=wkCnt.reduce((a,x)=>a+x.c,0);const maxWk=activeH.length*7;const wkPct=maxWk>0?Math.round(totWk/maxWk*100):0;
+/* Filtered stats */
+let fTot=0,fMax=0;
+if(filteredDates){filteredDates.forEach(dt=>{activeH.forEach(h=>{fMax++;if(hw[`${dt}_${h.id}`])fTot++})})}
+const fPct=fMax>0?Math.round(fTot/fMax*100):0;
 const curMo=new Date().getMonth();const curYr=new Date().getFullYear();
 let moTot=0,moMax=0;const dim=new Date(curYr,curMo+1,0).getDate();for(let d=1;d<=dim;d++){const dt=`${curYr}-${String(curMo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;activeH.forEach(h=>{moMax++;if(hw[`${dt}_${h.id}`])moTot++})}const moPct=moMax>0?Math.round(moTot/moMax*100):0;
 let yrTot=0,yrMax=0;for(let m=0;m<12;m++){const d2=new Date(curYr,m+1,0).getDate();for(let d=1;d<=d2;d++){const dt=`${curYr}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;activeH.forEach(h=>{yrMax++;if(hw[`${dt}_${h.id}`])yrTot++})}}const yrPct=yrMax>0?Math.round(yrTot/yrMax*100):0;
@@ -322,6 +331,23 @@ const updH=(i,u)=>{const h=[...habits];h[i]={...h[i],...u};sv({...D,habits:h})};
 const delH=i=>{const h=[...habits];h.splice(i,1);sv({...D,habits:h})};
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><div style={{fontSize:"1.3rem",fontWeight:700}}>🎯 Hábitos</div><button style={z.btn(true)} onClick={addH}>+ Hábito</button></div>
+<div style={{...z.card,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+<span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<label style={{fontSize:"0.65rem",color:C.t3}}>Desde</label>
+<input type="date" style={{...z.inpM,padding:"4px 8px",fontSize:"0.7rem",maxWidth:140,colorScheme:"dark"}} value={hDateFrom} onChange={e=>setHDateFrom(e.target.value)}/>
+</div>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<label style={{fontSize:"0.65rem",color:C.t3}}>Hasta</label>
+<input type="date" style={{...z.inpM,padding:"4px 8px",fontSize:"0.7rem",maxWidth:140,colorScheme:"dark"}} value={hDateTo} onChange={e=>setHDateTo(e.target.value)}/>
+</div>
+{hasHFilter&&<button style={{...z.btnS(false),padding:"4px 10px",fontSize:"0.65rem"}} onClick={()=>{setHDateFrom("");setHDateTo("")}}>✕ Reset</button>}
+{hasHFilter&&<span style={{fontSize:"0.63rem",color:C.lime,fontWeight:600}}>{filteredDates.length} días</span>}
+</div>
+{hasHFilter&&<div style={{marginBottom:14}}><div style={z.card}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{...z.lb,marginBottom:0}}>Periodo seleccionado</span><span style={{fontFamily:"monospace",fontSize:"0.76rem",color:C.cyan,fontWeight:600}}>{fPct}%</span></div><div style={{width:"100%",height:7,background:C.bg3,borderRadius:100,overflow:"hidden"}}><div style={{height:"100%",borderRadius:100,width:`${fPct}%`,background:C.cyan}}/></div>
+<div style={{marginTop:10,overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr><th style={z.th}>Hábito</th><th style={{...z.th,textAlign:"center"}}>Completados</th><th style={{...z.th,textAlign:"center"}}>%</th></tr></thead>
+<tbody>{activeH.map(h=>{let c=0;filteredDates.forEach(dt=>{if(hw[`${dt}_${h.id}`])c++});const pct=filteredDates.length>0?Math.round(c/filteredDates.length*100):0;return(<tr key={h.id}><td style={{...z.td,fontWeight:500}}>{h.emoji} {h.name}</td><td style={{...z.td,textAlign:"center",fontFamily:"monospace"}}>{c}/{filteredDates.length}</td><td style={{...z.td,textAlign:"center"}}><span style={{fontFamily:"monospace",fontWeight:600,color:pct>=70?C.green:pct>=40?C.orange:C.red}}>{pct}%</span></td></tr>)})}</tbody></table></div>
+</div></div>}
 <G3>{[["Semanal",wkPct,C.lime],["Mensual",moPct,C.blue],["Anual",yrPct,C.purple]].map(([l,p,c])=>(<div key={l} style={z.card}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{...z.lb,marginBottom:0}}>{l}</span><span style={{fontFamily:"monospace",fontSize:"0.76rem",color:c,fontWeight:600}}>{p}%</span></div><div style={{width:"100%",height:7,background:C.bg3,borderRadius:100,overflow:"hidden"}}><div style={{height:"100%",borderRadius:100,width:`${p}%`,background:c}}/></div></div>))}</G3>
 <div style={{...z.card,marginTop:4}}><div style={z.lb}>Esta Semana</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:500}}><thead><tr><th style={z.th}>Hábito</th><th style={z.th}>Meta</th>{DOWS.map(d=><th key={d} style={{...z.th,textAlign:"center"}}>{d}</th>)}<th style={{...z.th,textAlign:"center"}}>Score</th></tr></thead>
 <tbody>{activeH.map((h,hi)=>{const wc=wkCnt.find(x=>x.id===h.id)?.c||0;return(<tr key={h.id}><td style={{...z.td,fontWeight:500,cursor:"pointer"}} onClick={()=>openHab(habits.findIndex(x=>x.id===h.id))}>{h.emoji} {h.name} ✏️</td><td style={{...z.td,fontSize:"0.65rem",color:C.t3}}>{h.meta}</td>
@@ -383,38 +409,71 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 
 /* === TRENDS === */
 const TrendsPage=()=>{
-const wPts=fl.filter(e=>e.weight).map(e=>({v:+e.weight,label:e.date.slice(5)}));const wAvg=movAvg(fl.filter(e=>e.weight),"weight");
-const calPts=fl.filter(e=>+e.cal>0).map(e=>({v:+e.cal,label:e.date.slice(5)}));const calAvg=movAvg(fl.filter(e=>+e.cal>0),"cal");
-const protPts=fl.filter(e=>+e.prot>0).map(e=>({v:+e.prot,label:e.date.slice(5)}));const protAvg=movAvg(fl.filter(e=>+e.prot>0),"prot");
-const wArr=fl.filter(e=>e.weight);const wr=wArr.length>=7?((+wArr[0].weight)-(+wArr[wArr.length-1].weight))/(wArr.length/7):0;
+const[tDateFrom,setTDateFrom]=useState("");const[tDateTo,setTDateTo]=useState("");
+const tfl=fl.filter(e=>{if(tDateFrom&&e.date<tDateFrom)return false;if(tDateTo&&e.date>tDateTo)return false;return true});
+const wPts=tfl.filter(e=>e.weight).map(e=>({v:+e.weight,label:e.date.slice(5)}));const wAvg=movAvg(tfl.filter(e=>e.weight),"weight");
+const calPts=tfl.filter(e=>+e.cal>0).map(e=>({v:+e.cal,label:e.date.slice(5)}));const calAvg=movAvg(tfl.filter(e=>+e.cal>0),"cal");
+const protPts=tfl.filter(e=>+e.prot>0).map(e=>({v:+e.prot,label:e.date.slice(5)}));const protAvg=movAvg(tfl.filter(e=>+e.prot>0),"prot");
+const wArr=tfl.filter(e=>e.weight);const wr=wArr.length>=7?((+wArr[0].weight)-(+wArr[wArr.length-1].weight))/(wArr.length/7):0;
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
-<div style={{fontSize:"1.3rem",fontWeight:700,marginBottom:16}}>📈 Tendencias</div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📈 Tendencias</div></div>
+<div style={{...z.card,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+<span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<label style={{fontSize:"0.65rem",color:C.t3}}>Desde</label>
+<input type="date" style={{...z.inpM,padding:"4px 8px",fontSize:"0.7rem",maxWidth:140,colorScheme:"dark"}} value={tDateFrom} onChange={e=>setTDateFrom(e.target.value)}/>
+</div>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<label style={{fontSize:"0.65rem",color:C.t3}}>Hasta</label>
+<input type="date" style={{...z.inpM,padding:"4px 8px",fontSize:"0.7rem",maxWidth:140,colorScheme:"dark"}} value={tDateTo} onChange={e=>setTDateTo(e.target.value)}/>
+</div>
+{(tDateFrom||tDateTo)&&<button style={{...z.btnS(false),padding:"4px 10px",fontSize:"0.65rem"}} onClick={()=>{setTDateFrom("");setTDateTo("")}}>✕ Reset</button>}
+{(tDateFrom||tDateTo)&&<span style={{fontSize:"0.63rem",color:C.lime,fontWeight:600}}>{tfl.length} registros</span>}
+</div>
 <G3><div style={z.card}><div style={z.lb}>Ritmo</div><div style={z.big}>{wr.toFixed(2)}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kg/sem</div></div>
 <div style={z.card}><div style={z.lb}>Peso 7d</div><div style={z.big}>{wAvg.length>0?wAvg[wAvg.length-1].v:curW}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kg</div></div>
 <div style={z.card}><div style={z.lb}>Cal 7d</div><div style={z.big}>{calAvg.length>0?calAvg[calAvg.length-1].v:0}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kcal</div></div></G3>
 <G2><div style={z.card}><div style={{display:"flex",justifyContent:"space-between"}}><div style={z.lb}>Peso</div><div style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></div></div><Chart pts={wPts} pts2={wAvg} color={C.lime} color2={C.orange} h={160}/></div>
 <div style={z.card}><div style={{display:"flex",justifyContent:"space-between"}}><div style={z.lb}>Calorías</div><div style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></div></div><Chart pts={calPts} pts2={calAvg} color={C.blue} color2={C.orange} h={160}/></div></G2>
 <G2><div style={z.card}><div style={z.lb}>Proteína</div><Chart pts={protPts} pts2={protAvg} color={C.purple} color2={C.orange} h={150}/></div>
-<div style={z.card}><div style={z.lb}>Pasos</div><Chart pts={fl.filter(e=>+e.steps>0).map(e=>({v:+e.steps,label:e.date.slice(5)}))} pts2={movAvg(fl.filter(e=>+e.steps>0),"steps")} color={C.green} color2={C.orange} h={150}/></div></G2>
+<div style={z.card}><div style={z.lb}>Pasos</div><Chart pts={tfl.filter(e=>+e.steps>0).map(e=>({v:+e.steps,label:e.date.slice(5)}))} pts2={movAvg(tfl.filter(e=>+e.steps>0),"steps")} color={C.green} color2={C.orange} h={150}/></div></G2>
 </div>)};
 
 /* === WEEKLY REPORT === */
 const ReportPage=()=>{
-const last7=fl.slice(-7);const activeH=habits.filter(h=>h.active);const wk=getWk();
-const avgCal=last7.filter(e=>+e.cal>0).length>0?(last7.filter(e=>+e.cal>0).reduce((a,e)=>a+(+e.cal),0)/last7.filter(e=>+e.cal>0).length).toFixed(0):0;
-const avgProt=last7.filter(e=>+e.prot>0).length>0?(last7.filter(e=>+e.prot>0).reduce((a,e)=>a+(+e.prot),0)/last7.filter(e=>+e.prot>0).length).toFixed(0):0;
-const compDays=last7.filter(e=>chkComp(e).day).length;
-const wS=last7.length>0?+last7[0].weight:S.startWeight;const wE=last7.length>0?+last7[last7.length-1].weight:S.startWeight;
-let habTot=0;activeH.forEach(h=>{wk.forEach(dt=>{if(hw[`${dt}_${h.id}`])habTot++})});
-const habPct=activeH.length*7>0?Math.round(habTot/(activeH.length*7)*100):0;
+const[rDateFrom,setRDateFrom]=useState("");const[rDateTo,setRDateTo]=useState("");
+const rfl=fl.filter(e=>{if(rDateFrom&&e.date<rDateFrom)return false;if(rDateTo&&e.date>rDateTo)return false;return true});
+const dataSet=rfl.length>0?rfl:fl.slice(-7);
+const activeH=habits.filter(h=>h.active);
+const rDates=rfl.length>0?rfl.map(e=>e.date):getWk();
+const avgCal=dataSet.filter(e=>+e.cal>0).length>0?(dataSet.filter(e=>+e.cal>0).reduce((a,e)=>a+(+e.cal),0)/dataSet.filter(e=>+e.cal>0).length).toFixed(0):0;
+const avgProt=dataSet.filter(e=>+e.prot>0).length>0?(dataSet.filter(e=>+e.prot>0).reduce((a,e)=>a+(+e.prot),0)/dataSet.filter(e=>+e.prot>0).length).toFixed(0):0;
+const compDays=dataSet.filter(e=>chkComp(e).day).length;
+const wS=dataSet.length>0?+dataSet[0].weight:S.startWeight;const wE=dataSet.length>0?+dataSet[dataSet.length-1].weight:S.startWeight;
+let habTot=0,habMax=0;activeH.forEach(h=>{rDates.forEach(dt=>{habMax++;if(hw[`${dt}_${h.id}`])habTot++})});
+const habPct=habMax>0?Math.round(habTot/habMax*100):0;
 const[copied,setCopied]=useState(false);
-const rpt=`📊 REPORTE SEMANAL — ${S.planName}\n${"─".repeat(35)}\n\n🏋️ FITNESS\n• Peso: ${wS} → ${wE} kg (${(wS-wE).toFixed(1)} kg)\n• Cal promedio: ${avgCal} kcal/día\n• Prot promedio: ${avgProt}g/día\n• Días compliance: ${compDays}/7\n• Pasos promedio: ${(+avg(last7.filter(e=>+e.steps>0),"steps")).toLocaleString()}\n\n🎯 HÁBITOS: ${habPct}%\n${activeH.map(h=>{let c=0;wk.forEach(dt=>{if(hw[`${dt}_${h.id}`])c++});return`• ${h.emoji} ${h.name}: ${c}/7`}).join("\n")}\n\n📂 PROYECTOS\n${projects.map(p=>`• ${p.name}: ${p.progress}% — ${p.status}`).join("\n")}\n\n📚 LECTURA\n${books.filter(b=>b.status==="reading").map(b=>`• ${b.title}: ${b.progress}%`).join("\n")}\n\n📅 ${new Date().toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"})}`;
+const periodLabel=(rDateFrom||rDateTo)?`${rDateFrom||"inicio"} → ${rDateTo||"hoy"}`:"Última semana";
+const rpt=`📊 REPORTE — ${S.planName}\n${"─".repeat(35)}\n📅 Periodo: ${periodLabel} (${dataSet.length} días)\n\n🏋️ FITNESS\n• Peso: ${wS} → ${wE} kg (${(wS-wE).toFixed(1)} kg)\n• Cal promedio: ${avgCal} kcal/día\n• Prot promedio: ${avgProt}g/día\n• Días compliance: ${compDays}/${dataSet.length}\n• Pasos promedio: ${(+avg(dataSet.filter(e=>+e.steps>0),"steps")).toLocaleString()}\n\n🎯 HÁBITOS: ${habPct}%\n${activeH.map(h=>{let c=0;rDates.forEach(dt=>{if(hw[`${dt}_${h.id}`])c++});return`• ${h.emoji} ${h.name}: ${c}/${rDates.length}`}).join("\n")}\n\n📂 PROYECTOS\n${projects.map(p=>`• ${p.name}: ${p.progress}% — ${p.status}`).join("\n")}\n\n📚 LECTURA\n${books.filter(b=>b.status==="reading").map(b=>`• ${b.title}: ${b.progress}%`).join("\n")}\n\n📅 ${new Date().toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"})}`;
 const copy=()=>{navigator.clipboard.writeText(rpt).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})};
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📋 Reporte Semanal</div><button style={z.btn(true)} onClick={copy}>{copied?"✓ Copiado!":"📋 Copiar"}</button></div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📋 Reporte</div><button style={z.btn(true)} onClick={copy}>{copied?"✓ Copiado!":"📋 Copiar"}</button></div>
+<div style={{...z.card,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+<span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<label style={{fontSize:"0.65rem",color:C.t3}}>Desde</label>
+<input type="date" style={{...z.inpM,padding:"4px 8px",fontSize:"0.7rem",maxWidth:140,colorScheme:"dark"}} value={rDateFrom} onChange={e=>setRDateFrom(e.target.value)}/>
+</div>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<label style={{fontSize:"0.65rem",color:C.t3}}>Hasta</label>
+<input type="date" style={{...z.inpM,padding:"4px 8px",fontSize:"0.7rem",maxWidth:140,colorScheme:"dark"}} value={rDateTo} onChange={e=>setRDateTo(e.target.value)}/>
+</div>
+{(rDateFrom||rDateTo)&&<button style={{...z.btnS(false),padding:"4px 10px",fontSize:"0.65rem"}} onClick={()=>{setRDateFrom("");setRDateTo("")}}>✕ Reset</button>}
+{(rDateFrom||rDateTo)&&<span style={{fontSize:"0.63rem",color:C.lime,fontWeight:600}}>{rfl.length} días</span>}
+</div>
 <G3><div style={z.card}><div style={z.lb}>Δ Peso</div><div style={z.big}>{(wS-wE).toFixed(1)}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kg</div></div>
 <div style={z.card}><div style={z.lb}>Prom Cal</div><div style={z.big}>{avgCal}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kcal</div></div>
-<div style={z.card}><div style={z.lb}>Compliance</div><div style={z.big}>{compDays}/7</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>días ✓</div></div>
+<div style={z.card}><div style={z.lb}>Compliance</div><div style={z.big}>{compDays}/{dataSet.length}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>días ✓</div></div>
 <div style={z.card}><div style={z.lb}>Hábitos</div><div style={z.big}>{habPct}%</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>completados</div></div></G3>
 <div style={z.card}><div style={z.lb}>Vista previa</div><pre style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:"0.7rem",color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.7,background:C.bg0,padding:14,borderRadius:10,border:`1px solid ${C.b1}`,overflowX:"auto"}}>{rpt}</pre></div>
 </div>)};
