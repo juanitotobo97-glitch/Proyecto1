@@ -33,6 +33,7 @@ input[type=number]::-webkit-inner-spin-button{opacity:1}
 .main{margin-left:0;padding:16px 12px;padding-bottom:80px;padding-top:56px}
 .mob-bar{display:flex;justify-content:space-around;align-items:center}
 .mob-btn{display:block}
+.mob-login-banner{display:flex!important}
 }
 </style>
 </head>
@@ -782,6 +783,15 @@ return(
 
 {/* Main */}
 <div className="main">
+{/* Mobile login banner - visible only on mobile when not logged in */}
+{!user&&!authLoading&&<div className="mob-login-banner" onClick={signIn} style={{display:"none",alignItems:"center",gap:10,padding:"10px 14px",margin:"0 0 12px",background:`linear-gradient(135deg,${C.bg2},${C.bg3})`,border:`1px solid ${C.lime}30`,borderRadius:10,cursor:"pointer"}}>
+<span style={{fontSize:"1.4rem"}}>🔐</span>
+<div style={{flex:1}}>
+<div style={{fontSize:"0.8rem",fontWeight:700,color:C.t0}}>Iniciar sesión</div>
+<div style={{fontSize:"0.6rem",color:C.t2}}>Sincroniza tus datos con Google</div>
+</div>
+<span style={{fontSize:"0.7rem",color:C.lime,fontWeight:600}}>Entrar →</span>
+</div>}
 {pg==="dashboard"&&<DashboardPage/>}
 {pg==="fitness"&&<FitnessPage/>}
 {pg==="trends"&&<TrendsPage/>}
@@ -796,6 +806,11 @@ return(
 <div className="mob-bar">
 {mobNav.map(n=><div key={n.id} onClick={()=>go(n.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"6px 12px",cursor:"pointer",color:pg===n.id?C.lime:C.t3,fontSize:"1.1rem"}}>
 <span>{n.icon}</span><span style={{fontSize:"0.5rem",marginTop:2,fontWeight:600}}>{n.id.slice(0,4)}</span></div>)}
+{user?<div onClick={()=>setSideOpen(true)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"6px 12px",cursor:"pointer",color:C.t3,fontSize:"1.1rem",position:"relative"}}>
+<img src={user.photoURL||""} style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${syncStatus==="synced"?C.green:syncStatus==="syncing"?C.orange:C.t3}`}} referrerPolicy="no-referrer"/>
+<span style={{fontSize:"0.5rem",marginTop:2,fontWeight:600,color:syncStatus==="synced"?C.green:C.t2}}>{syncStatus==="synced"?"sync":"..."}</span>
+</div>:<div onClick={signIn} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"6px 12px",cursor:"pointer",color:C.lime,fontSize:"1.1rem"}}>
+<span>🔐</span><span style={{fontSize:"0.5rem",marginTop:2,fontWeight:600}}>login</span></div>}
 <div onClick={()=>setSideOpen(true)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"6px 12px",cursor:"pointer",color:C.t3,fontSize:"1.1rem"}}>
 <span>☰</span><span style={{fontSize:"0.5rem",marginTop:2,fontWeight:600}}>más</span></div>
 </div>
