@@ -65,8 +65,8 @@ const DEF_HAB=[
 {id:"h6",name:"Dormir 7h+",emoji:"😴",meta:"Diario",active:true}];
 
 const DEF_PROJ=[
-{id:"p1",name:"Asorsalud Web",status:"En progreso",progress:72,priority:"Alta",category:"Web Dev",deadline:"2026-03-15",notes:"Rediseño web $22M COP",tasks:[{id:uid(),t:"Análisis sitio actual",s:"done",note:""},{id:uid(),t:"Propuesta ejecutiva",s:"done",note:""},{id:uid(),t:"Fotografía profesional",s:"pending",note:"Contactar fotógrafo"},{id:uid(),t:"Desarrollo frontend",s:"pending",note:""},{id:uid(),t:"Integración sistemas",s:"pending",note:""},{id:uid(),t:"Testing y lanzamiento",s:"pending",note:""}]},
-{id:"p2",name:"Canchas de Pádel",status:"En progreso",progress:55,priority:"Alta",category:"Inversión",deadline:"2026-04-01",notes:"8 canchas, $250K inversión",tasks:[{id:uid(),t:"Modelo DCF + escenarios",s:"done",note:""},{id:uid(),t:"Análisis de sensibilidad",s:"done",note:""},{id:uid(),t:"Pitch deck inversionistas",s:"pending",note:"Preparar para marzo"},{id:uid(),t:"Validación de mercado",s:"pending",note:""},{id:uid(),t:"Búsqueda de ubicación",s:"pending",note:""},{id:uid(),t:"Plan operativo",s:"pending",note:""}]}];
+{id:"p1",name:"Asorsalud Web",status:"En progreso",progress:72,priority:"Alta",category:"Web Dev",deadline:"2026-03-15",notes:"Rediseño web $22M COP",tasks:[{id:uid(),t:"Análisis sitio actual",s:"done",note:"",dl:""},{id:uid(),t:"Propuesta ejecutiva",s:"done",note:"",dl:""},{id:uid(),t:"Fotografía profesional",s:"progress",note:"Contactar fotógrafo",dl:"2026-03-01"},{id:uid(),t:"Desarrollo frontend",s:"pending",note:"",dl:""},{id:uid(),t:"Integración sistemas",s:"pending",note:"",dl:""},{id:uid(),t:"Testing y lanzamiento",s:"pending",note:"",dl:""}]},
+{id:"p2",name:"Canchas de Pádel",status:"En progreso",progress:55,priority:"Alta",category:"Inversión",deadline:"2026-04-01",notes:"8 canchas, $250K inversión",tasks:[{id:uid(),t:"Modelo DCF + escenarios",s:"done",note:"",dl:""},{id:uid(),t:"Análisis de sensibilidad",s:"done",note:"",dl:""},{id:uid(),t:"Pitch deck inversionistas",s:"progress",note:"Preparar para marzo",dl:"2026-03-15"},{id:uid(),t:"Validación de mercado",s:"pending",note:"",dl:""},{id:uid(),t:"Búsqueda de ubicación",s:"pending",note:"",dl:""},{id:uid(),t:"Plan operativo",s:"pending",note:"",dl:""}]}];
 
 const DEF_BOOKS=[
 {id:"b1",title:"Atomic Habits",author:"James Clear",status:"reading",progress:65,genre:"Productividad",rating:5,startDate:"2026-01-10",notes:"Excelente para hábitos"},
@@ -270,13 +270,14 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 
 /* === PROJECTS (task notes) === */
 const ProjectsPage=()=>{
-const[editP,setEditP]=useState(null);const[editT,setEditT]=useState(null);const[editTN,setEditTN]=useState(null);
-const saveT=()=>{if(editT){updT(editT.pi,editT.ti,{t:editT.val});setEditT(null)}};
-const saveTN=()=>{if(editTN){updT(editTN.pi,editTN.ti,{note:editTN.val});setEditTN(null)}};
+const[editP,setEditP]=useState(null);const[editTM,setEditTM]=useState(null);
+const TSTATES=[{id:"pending",lb:"Inicio",em:"🔵",c:C.blue},{id:"progress",lb:"En Proceso",em:"🟡",c:C.orange},{id:"done",lb:"Completado",em:"🟢",c:C.green}];
+const tState=s=>TSTATES.find(x=>x.id===s)||TSTATES[0];
+const nextState=s=>{const i=TSTATES.findIndex(x=>x.id===s);return TSTATES[(i+1)%TSTATES.length].id};
 const addP=()=>{sv({...D,projects:[...projects,{id:uid(),name:"Nuevo Proyecto",status:"Por iniciar",progress:0,priority:"Media",category:"—",deadline:"",notes:"",tasks:[]}]})};
 const updP=(i,u)=>{const p=[...projects];p[i]={...p[i],...u};sv({...D,projects:p})};
 const delP=i=>{const p=[...projects];p.splice(i,1);sv({...D,projects:p})};
-const addT=pi=>{const p=[...projects];p[pi].tasks.push({id:uid(),t:"Nueva tarea",s:"pending",note:""});sv({...D,projects:p})};
+const addT=pi=>{const p=[...projects];p[pi].tasks.push({id:uid(),t:"Nueva tarea",s:"pending",note:"",dl:""});sv({...D,projects:p})};
 const updT=(pi,ti,u)=>{const p=[...projects];p[pi].tasks[ti]={...p[pi].tasks[ti],...u};p[pi].progress=p[pi].tasks.length>0?Math.round(p[pi].tasks.filter(t=>t.s==="done").length/p[pi].tasks.length*100):0;sv({...D,projects:p})};
 const delT=(pi,ti)=>{const p=[...projects];p[pi].tasks.splice(ti,1);p[pi].progress=p[pi].tasks.length>0?Math.round(p[pi].tasks.filter(t=>t.s==="done").length/p[pi].tasks.length*100):0;sv({...D,projects:p})};
 const moveT=(pi,ti,dir)=>{const p=[...projects];const t=p[pi].tasks;const ni=ti+dir;if(ni<0||ni>=t.length)return;[t[ti],t[ni]]=[t[ni],t[ti]];sv({...D,projects:p})};
@@ -288,22 +289,38 @@ const ProjEdit=({idx,onClose})=>{const p=projects[idx];const[f,setF]=useState({.
 <div><div style={{...z.lb,marginBottom:4}}>Notas</div><textarea style={{...z.inp,minHeight:50}} value={f.notes} onChange={e=>setF({...f,notes:e.target.value})}/></div>
 <div style={{display:"flex",gap:8}}><button style={z.btn(true)} onClick={()=>{updP(idx,f);onClose()}}>Guardar</button><button style={z.btn(false)} onClick={onClose}>Cancelar</button></div></div>}/>)};
 
+const TaskEdit=({pi,ti,onClose})=>{const t=projects[pi].tasks[ti];const[f,setF]=useState({t:t.t,s:t.s||"pending",dl:t.dl||"",note:t.note||""});
+const isOverdue=f.dl&&f.dl<todayS()&&f.s!=="done";
+return(<Mdl title="✏️ Editar Tarea" onClose={onClose} ch={<div style={{display:"flex",flexDirection:"column",gap:12}}>
+<div><div style={{...z.lb,marginBottom:4}}>Nombre</div><input style={z.inp} value={f.t} onChange={e=>setF({...f,t:e.target.value})}/></div>
+<G2><div><div style={{...z.lb,marginBottom:4}}>Estado</div>
+<div style={{display:"flex",gap:6}}>{TSTATES.map(st=>(<button key={st.id} onClick={()=>setF({...f,s:st.id})} style={{padding:"6px 12px",borderRadius:8,border:f.s===st.id?`2px solid ${st.c}`:`1px solid ${C.b1}`,background:f.s===st.id?st.c+"20":C.bg2,color:f.s===st.id?st.c:C.t2,fontSize:"0.72rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{st.em} {st.lb}</button>))}</div>
+</div><div><div style={{...z.lb,marginBottom:4}}>Fecha Límite</div><input style={{...z.inpM,colorScheme:"dark"}} type="date" value={f.dl} onChange={e=>setF({...f,dl:e.target.value})}/>
+{isOverdue&&<div style={{fontSize:"0.65rem",color:C.red,fontWeight:600,marginTop:4}}>⚠ Vencida</div>}</div></G2>
+<div><div style={{...z.lb,marginBottom:4}}>📝 Notas</div>
+<textarea style={{...z.inp,minHeight:150,fontFamily:"'IBM Plex Mono',monospace",fontSize:"0.78rem",lineHeight:1.7,whiteSpace:"pre-wrap",resize:"vertical"}} value={f.note} onChange={e=>setF({...f,note:e.target.value})} placeholder="Escribe notas libres aquí..."/></div>
+<div style={{display:"flex",gap:8}}><button style={z.btn(true)} onClick={()=>{updT(pi,ti,f);onClose()}}>Guardar</button><button style={z.btnD} onClick={()=>{delT(pi,ti);onClose()}}>Eliminar</button><button style={z.btn(false)} onClick={onClose}>Cancelar</button></div></div>}/>)};
+
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📂 Proyectos</div><div style={{display:"flex",gap:6}}>{(editT||editTN)&&<button style={z.btnS(true)} onClick={()=>{saveT();saveTN()}}>Guardar ✓</button>}<button style={z.btn(true)} onClick={addP}>+ Proyecto</button></div></div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📂 Proyectos</div><button style={z.btn(true)} onClick={addP}>+ Proyecto</button></div>
 <G3>{projects.map((p,i)=>(<div key={p.id} style={z.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><span style={{fontWeight:700,fontSize:"0.85rem"}}>{p.name}</span><div style={{display:"flex",gap:4}}><button style={z.btnS(false)} onClick={()=>setEditP(i)}>✏️</button><button style={z.btnD} onClick={()=>delP(i)}>✕</button></div></div><div style={{display:"flex",gap:5,marginBottom:8,flexWrap:"wrap"}}><span style={z.tag(p.status==="En progreso"?C.blue:p.status==="Completado"?C.green:C.orange)}>{p.status}</span><span style={z.tag(p.priority==="Alta"?C.red:C.orange)}>{p.priority}</span></div><div style={{width:"100%",height:6,background:C.bg3,borderRadius:100,overflow:"hidden"}}><div style={{height:"100%",borderRadius:100,width:`${p.progress}%`,background:C.lime}}/></div><div style={{fontSize:"0.63rem",color:C.t3,marginTop:3,textAlign:"right"}}>{p.progress}%</div></div>))}</G3>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:14,marginTop:14}}>{projects.map((p,pi)=>(<div key={p.id} style={z.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={z.lb}>📋 {p.name}</div><button style={z.btnS(true)} onClick={()=>addT(pi)}>+ Tarea</button></div>
-{p.tasks.map((t,ti)=>(<div key={t.id} style={{padding:"6px 0",borderBottom:`1px solid ${C.b1}`}}>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(340px,1fr))",gap:14,marginTop:14}}>{projects.map((p,pi)=>(<div key={p.id} style={z.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={z.lb}>📋 {p.name}</div><button style={z.btnS(true)} onClick={()=>addT(pi)}>+ Tarea</button></div>
+{p.tasks.map((t,ti)=>{const st=tState(t.s);const isOverdue=t.dl&&t.dl<todayS()&&t.s!=="done";return(<div key={t.id} style={{padding:"8px 0",borderBottom:`1px solid ${C.b1}`}}>
 <div style={{display:"flex",alignItems:"center",gap:6}}>
-<span style={{cursor:"pointer"}} onClick={()=>updT(pi,ti,{s:t.s==="done"?"pending":"done"})}>{t.s==="done"?"✅":"⏳"}</span>
-{editT&&editT.key===`${pi}-${ti}`?<input style={{...z.inp,flex:1,padding:"4px 8px",fontSize:"0.76rem"}} autoFocus value={editT.val} onChange={e=>setEditT({...editT,val:e.target.value})} onKeyDown={e=>{if(e.key==="Enter")saveT();if(e.key==="Escape")setEditT(null)}}/>:<span style={{flex:1,fontSize:"0.78rem",textDecoration:t.s==="done"?"line-through":"none",color:t.s==="done"?C.t3:C.t0,cursor:"pointer"}} onClick={()=>{saveT();saveTN();setEditT({key:`${pi}-${ti}`,pi,ti,val:t.t})}}>{t.t}</span>}
-<button style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"0.6rem"}} onClick={()=>{if(editTN&&editTN.key===`${pi}-${ti}`){saveTN()}else{saveTN();saveT();setEditTN({key:`${pi}-${ti}`,pi,ti,val:t.note||""})}}}>📝</button>
+<span style={{cursor:"pointer",fontSize:"0.85rem",transition:"transform 0.15s"}} title={`Click: ${tState(nextState(t.s)).lb}`} onClick={()=>updT(pi,ti,{s:nextState(t.s)})}>{st.em}</span>
+<span style={{flex:1,fontSize:"0.78rem",textDecoration:t.s==="done"?"line-through":"none",color:t.s==="done"?C.t3:C.t0,cursor:"pointer",fontWeight:t.s==="progress"?600:400}} onClick={()=>setEditTM({pi,ti})}>{t.t}</span>
+<span style={{...z.tag(st.c),fontSize:"0.5rem",padding:"2px 6px"}}>{st.lb}</span>
 <button style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"0.6rem"}} onClick={()=>moveT(pi,ti,-1)}>↑</button>
 <button style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"0.6rem"}} onClick={()=>moveT(pi,ti,1)}>↓</button>
 <button style={{background:"none",border:"none",color:C.red+"55",cursor:"pointer",fontSize:"0.6rem"}} onClick={()=>delT(pi,ti)}>✕</button></div>
-{editTN&&editTN.key===`${pi}-${ti}`&&<div style={{marginTop:4,marginLeft:24}}><input style={{...z.inp,padding:"4px 8px",fontSize:"0.72rem"}} value={editTN.val} onChange={e=>setEditTN({...editTN,val:e.target.value})} placeholder="Nota de la tarea..." onKeyDown={e=>{if(e.key==="Enter")saveTN();if(e.key==="Escape")setEditTN(null)}}/></div>}
-{t.note&&!(editTN&&editTN.key===`${pi}-${ti}`)&&<div style={{marginLeft:24,fontSize:"0.68rem",color:C.t3,fontStyle:"italic",marginTop:2}}>💬 {t.note}</div>}
-</div>))}</div>))}</div>
+<div style={{display:"flex",gap:8,marginLeft:26,marginTop:3,alignItems:"center",flexWrap:"wrap"}}>
+{t.dl&&<span style={{fontSize:"0.62rem",fontFamily:"monospace",color:isOverdue?C.red:t.s==="done"?C.t3:C.t2,fontWeight:isOverdue?700:400}}>{isOverdue?"⚠ ":"📅 "}{t.dl}</span>}
+{t.note&&<span style={{fontSize:"0.65rem",color:C.t3,cursor:"pointer",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} onClick={()=>setEditTM({pi,ti})}>📝 {t.note.split("\n")[0]}</span>}
+</div>
+</div>)})}
+</div>))}</div>
 {editP!==null&&<ProjEdit idx={editP} onClose={()=>setEditP(null)}/>}
+{editTM&&<TaskEdit pi={editTM.pi} ti={editTM.ti} onClose={()=>setEditTM(null)}/>}
 </div>)};
 
 /* === HABITS === */
