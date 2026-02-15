@@ -7,6 +7,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg0:#08080a;--bg1:#0e0e12;--bg2:#141418;--bg3:#1a1a20;--bg4:#222228;--b1:#1e1e24;--t0:#f4f4f6;--t1:#c8c8d0;--t2:#8888a0;--t3:#55556a;--lime:#b8f000;--blue:#5b9df5;--orange:#f5a623;--red:#f55353;--green:#34d399;--purple:#a78bfa;--cyan:#22d3ee;--pink:#f472b6}
@@ -36,7 +39,41 @@ input[type=number]::-webkit-inner-spin-button{opacity:1}
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const{useState,useEffect,useCallback}=React;
+/* === FIREBASE CONFIG === */
+/* INSTRUCCIONES: Reemplaza estos valores con los de tu proyecto Firebase
+   1. Ve a https://console.firebase.google.com
+   2. Crea un proyecto nuevo (o usa uno existente)
+   3. En Project Settings > General, copia tu firebaseConfig
+   4. En Authentication > Sign-in method, habilita Google
+   5. En Firestore Database, crea una base de datos en modo producción
+   6. En Firestore > Rules, usa estas reglas:
+      rules_version = '2';
+      service cloud.firestore {
+        match /databases/{database}/documents {
+          match /users/{userId}/{document=**} {
+            allow read, write: if request.auth != null && request.auth.uid == userId;
+          }
+        }
+      }
+*/
+const FIREBASE_CONFIG = {
+  apiKey: "PEGA_TU_API_KEY_AQUI",
+  authDomain: "TU_PROYECTO.firebaseapp.com",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_PROYECTO.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef123456"
+};
+
+let fbApp, fbAuth, fbDb;
+try {
+  fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+  fbAuth = firebase.auth();
+  fbDb = firebase.firestore();
+  fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+} catch(e) { console.warn("Firebase init error:",e); }
+
+const{useState,useEffect,useCallback,useRef}=React;
 const uid=()=>"_"+Math.random().toString(36).slice(2,8);
 const fmtD=d=>d.toISOString().split("T")[0];
 const todayS=()=>fmtD(new Date());
@@ -106,17 +143,72 @@ const DEF_TT=[{id:"tt1",task:"Sesión de pesas — Upper body",cat:"Gym",done:fa
 
 const DEF={settings:DEF_S,dayTypes:DEF_DT,habits:DEF_HAB,habitWeekly:{},projects:DEF_PROJ,books:DEF_BOOKS,readingLog:DEF_RL,horario:DEF_HOR,fitnessLog:DEF_FL,todayTasks:DEF_TT,journal:{}};
 
+/* === DEEP MERGE helper === */
+const deepMerge=(p)=>{
+  const merged={};for(const k of Object.keys(DEF)){
+  if(p[k]===undefined||p[k]===null){merged[k]=DEF[k]}
+  else if(k==="settings"){merged[k]={...DEF_S,...p[k]}}
+  else if(k==="dayTypes"){merged[k]=p[k].map(t=>({...DEF_DT.find(d=>d.id===t.id)||{},...t}))}
+  else{merged[k]=p[k]}
+  }return merged;
+};
+
 function App(){
 const[D,setD]=useState(null);const[ld,setLd]=useState(true);const[pg,setPg]=useState("dashboard");const[modal,setModal]=useState(null);const[sideOpen,setSideOpen]=useState(false);
-useEffect(()=>{try{const s=localStorage.getItem(KEY);if(s){const p=JSON.parse(s);
-/* Deep merge: user data wins, defaults only fill gaps */
-const merged={};for(const k of Object.keys(DEF)){
-if(p[k]===undefined||p[k]===null){merged[k]=DEF[k]}
-else if(k==="settings"){merged[k]={...DEF_S,...p[k]}}
-else if(k==="dayTypes"){merged[k]=p[k].map(t=>({...DEF_DT.find(d=>d.id===t.id)||{},...t}))}
-else{merged[k]=p[k]}
-}setD(merged)}else setD({...DEF})}catch{setD({...DEF})}setLd(false)},[]);
-const sv=useCallback(nd=>{setD(nd);try{localStorage.setItem(KEY,JSON.stringify(nd))}catch{}},[]);
+/* Auth state */
+const[user,setUser]=useState(null);const[authLoading,setAuthLoading]=useState(true);
+const[syncStatus,setSyncStatus]=useState("offline"); /* synced | syncing | offline | error */
+const saveTimer=useRef(null);
+/* Global date filters — persist across page switches */
+const[gFitFrom,setGFitFrom]=useState("");const[gFitTo,setGFitTo]=useState("");
+const[gTrendFrom,setGTrendFrom]=useState("");const[gTrendTo,setGTrendTo]=useState("");
+const[gRepFrom,setGRepFrom]=useState("");const[gRepTo,setGRepTo]=useState("");
+const[gHabFrom,setGHabFrom]=useState("");const[gHabTo,setGHabTo]=useState("");
+
+/* Listen to Firebase auth state */
+useEffect(()=>{
+  if(!fbAuth){setAuthLoading(false);return}
+  const unsub=fbAuth.onAuthStateChanged(u=>{setUser(u);setAuthLoading(false)});
+  return()=>unsub();
+},[]);
+
+/* Load data: from Firestore if logged in, else localStorage */
+useEffect(()=>{
+  if(authLoading)return;
+  const loadLocal=()=>{
+    try{const s=localStorage.getItem(KEY);if(s){setD(deepMerge(JSON.parse(s)))}else setD({...DEF})}catch{setD({...DEF})}
+    setSyncStatus("offline");setLd(false);
+  };
+  if(user&&fbDb){
+    setSyncStatus("syncing");
+    fbDb.collection("users").doc(user.uid).get().then(doc=>{
+      if(doc.exists){const p=doc.data();setD(deepMerge(p));localStorage.setItem(KEY,JSON.stringify(deepMerge(p)))}
+      else{/* First time: upload localStorage data to Firestore */
+        const local=localStorage.getItem(KEY);const parsed=local?deepMerge(JSON.parse(local)):{...DEF};
+        setD(parsed);fbDb.collection("users").doc(user.uid).set(parsed).catch(()=>{});
+      }
+      setSyncStatus("synced");setLd(false);
+    }).catch(()=>{loadLocal()});
+  } else { loadLocal(); }
+},[user,authLoading]);
+
+/* Save function: localStorage + Firestore (debounced) */
+const sv=useCallback(nd=>{
+  setD(nd);
+  try{localStorage.setItem(KEY,JSON.stringify(nd))}catch{}
+  if(user&&fbDb){
+    setSyncStatus("syncing");
+    if(saveTimer.current)clearTimeout(saveTimer.current);
+    saveTimer.current=setTimeout(()=>{
+      fbDb.collection("users").doc(user.uid).set(nd).then(()=>setSyncStatus("synced")).catch(()=>setSyncStatus("error"));
+    },1500);
+  }
+},[user]);
+
+/* Auth helpers */
+const signIn=()=>{if(!fbAuth)return alert("Firebase no configurado. Edita FIREBASE_CONFIG en el HTML.");
+  fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>alert("Error: "+e.message))};
+const signOut=()=>{if(fbAuth)fbAuth.signOut()};
 const go=p=>{setPg(p);setSideOpen(false)};
 
 const S=D?.settings||DEF_S;const dayTypes=D?.dayTypes||DEF_DT;const fl=D?.fitnessLog||[];const habits=D?.habits||DEF_HAB;const projects=D?.projects||DEF_PROJ;const books=D?.books||DEF_BOOKS;const readingLog=D?.readingLog||[];const horario=D?.horario||DEF_HOR;const journal=D?.journal||{};const hw=D?.habitWeekly||{};
@@ -166,7 +258,7 @@ const G3=({children})=>(<div style={{display:"grid",gridTemplateColumns:"repeat(
 /* === FITNESS === */
 const FitnessPage=()=>{
 const[flM,setFlM]=useState(null);const[compM,setCompM]=useState(false);
-const[dateFrom,setDateFrom]=useState("");const[dateTo,setDateTo]=useState("");
+const dateFrom=gFitFrom,setDateFrom=setGFitFrom,dateTo=gFitTo,setDateTo=setGFitTo;
 const ffl=fl.filter(e=>{if(dateFrom&&e.date<dateFrom)return false;if(dateTo&&e.date>dateTo)return false;return true});
 const fitCards=S.fitCards||["weight","waist","cal","steps"];
 const setCard=(idx,mid)=>{const nc=[...fitCards];nc[idx]=mid;sv({...D,settings:{...S,fitCards:nc}})};
@@ -326,7 +418,7 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 /* === HABITS === */
 const HabitsPage=()=>{
 const[editH,setEditH]=useState(null);const[hf,setHf]=useState(null);const activeH=habits.filter(h=>h.active);const wk=getWk();
-const[hDateFrom,setHDateFrom]=useState("");const[hDateTo,setHDateTo]=useState("");
+const hDateFrom=gHabFrom,setHDateFrom=setGHabFrom,hDateTo=gHabTo,setHDateTo=setGHabTo;
 const hasHFilter=hDateFrom||hDateTo;
 const openHab=idx=>{setEditH(idx);setHf({...habits[idx]})};
 const saveHab=()=>{if(editH!==null&&hf)updH(editH,hf);setEditH(null);setHf(null)};
@@ -425,15 +517,31 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 </div>)};
 
 /* === TRENDS === */
+const TREND_METRICS=[
+{id:"weight",lb:"Peso",key:"weight",unit:"kg",color:C.lime,filter:e=>e.weight},
+{id:"cal",lb:"Calorías",key:"cal",unit:"kcal",color:C.orange,filter:e=>+e.cal>0},
+{id:"prot",lb:"Proteína",key:"prot",unit:"g",color:C.blue,filter:e=>+e.prot>0},
+{id:"steps",lb:"Pasos",key:"steps",unit:"pasos",color:C.green,filter:e=>+e.steps>0},
+{id:"fat",lb:"Grasas",key:"fat",unit:"g",color:C.red,filter:e=>+e.fat>0},
+{id:"carbs",lb:"Carbos",key:"carbs",unit:"g",color:C.cyan,filter:e=>+e.carbs>0},
+{id:"sugar",lb:"Azúcar",key:"sugar",unit:"g",color:C.pink,filter:e=>+e.sugar>0},
+{id:"waist",lb:"Cintura",key:"waist",unit:"cm",color:C.purple,filter:e=>e.waist},
+{id:"sleep",lb:"Sueño",key:"sleep",unit:"hrs",color:C.cyan,filter:e=>+e.sleep>0}
+];
 const TrendsPage=()=>{
-const[tDateFrom,setTDateFrom]=useState("");const[tDateTo,setTDateTo]=useState("");
+const tDateFrom=gTrendFrom,setTDateFrom=setGTrendFrom,tDateTo=gTrendTo,setTDateTo=setGTrendTo;
 const tfl=fl.filter(e=>{if(tDateFrom&&e.date<tDateFrom)return false;if(tDateTo&&e.date>tDateTo)return false;return true});
-const wPts=tfl.filter(e=>e.weight).map(e=>({v:+e.weight,label:e.date.slice(5)}));const wAvg=movAvg(tfl.filter(e=>e.weight),"weight");
-const calPts=tfl.filter(e=>+e.cal>0).map(e=>({v:+e.cal,label:e.date.slice(5)}));const calAvg=movAvg(tfl.filter(e=>+e.cal>0),"cal");
-const protPts=tfl.filter(e=>+e.prot>0).map(e=>({v:+e.prot,label:e.date.slice(5)}));const protAvg=movAvg(tfl.filter(e=>+e.prot>0),"prot");
+const trendCharts=S.trendCharts||["weight","cal","prot","steps"];
+const setTChart=(idx,mid)=>{const nc=[...trendCharts];nc[idx]=mid;sv({...D,settings:{...S,trendCharts:nc}})};
+const addTChart=()=>{const avail=TREND_METRICS.find(m=>!trendCharts.includes(m.id));if(avail)sv({...D,settings:{...S,trendCharts:[...trendCharts,avail.id]}})};
+const rmTChart=idx=>{if(trendCharts.length<=1)return;const nc=[...trendCharts];nc.splice(idx,1);sv({...D,settings:{...S,trendCharts:nc}})};
 const wArr=tfl.filter(e=>e.weight);const wr=wArr.length>=7?((+wArr[0].weight)-(+wArr[wArr.length-1].weight))/(wArr.length/7):0;
+const wAvg=movAvg(tfl.filter(e=>e.weight),"weight");const calAvg=movAvg(tfl.filter(e=>+e.cal>0),"cal");
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📈 Tendencias</div></div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
+<div style={{fontSize:"1.3rem",fontWeight:700}}>📈 Tendencias</div>
+<div style={{display:"flex",gap:6}}>{trendCharts.length<TREND_METRICS.length&&<button style={z.btnS(false)} onClick={addTChart}>+ Gráfica</button>}</div>
+</div>
 <div style={{...z.card,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
 <span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
 <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -450,31 +558,57 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <G3><div style={z.card}><div style={z.lb}>Ritmo</div><div style={z.big}>{wr.toFixed(2)}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kg/sem</div></div>
 <div style={z.card}><div style={z.lb}>Peso 7d</div><div style={z.big}>{wAvg.length>0?wAvg[wAvg.length-1].v:curW}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kg</div></div>
 <div style={z.card}><div style={z.lb}>Cal 7d</div><div style={z.big}>{calAvg.length>0?calAvg[calAvg.length-1].v:0}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kcal</div></div></G3>
-<G2><div style={z.card}><div style={{display:"flex",justifyContent:"space-between"}}><div style={z.lb}>Peso</div><div style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></div></div><Chart pts={wPts} pts2={wAvg} color={C.lime} color2={C.orange} h={160}/></div>
-<div style={z.card}><div style={{display:"flex",justifyContent:"space-between"}}><div style={z.lb}>Calorías</div><div style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></div></div><Chart pts={calPts} pts2={calAvg} color={C.blue} color2={C.orange} h={160}/></div></G2>
-<G2><div style={z.card}><div style={z.lb}>Proteína</div><Chart pts={protPts} pts2={protAvg} color={C.purple} color2={C.orange} h={150}/></div>
-<div style={z.card}><div style={z.lb}>Pasos</div><Chart pts={tfl.filter(e=>+e.steps>0).map(e=>({v:+e.steps,label:e.date.slice(5)}))} pts2={movAvg(tfl.filter(e=>+e.steps>0),"steps")} color={C.green} color2={C.orange} h={150}/></div></G2>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>{trendCharts.map((mid,ci)=>{const m=TREND_METRICS.find(x=>x.id===mid)||TREND_METRICS[0];
+const pts=tfl.filter(m.filter).map(e=>({v:+e[m.key],label:e.date.slice(5)}));
+const avg7=movAvg(tfl.filter(m.filter),m.key);
+return(<div key={ci} style={z.card}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<select style={{background:"transparent",border:"none",color:m.color,fontSize:"0.6rem",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",cursor:"pointer",padding:0,fontFamily:"inherit",outline:"none",appearance:"auto",WebkitAppearance:"menulist",colorScheme:"dark"}} value={mid} onChange={e=>setTChart(ci,e.target.value)}>
+{TREND_METRICS.map(o=><option key={o.id} value={o.id}>{o.lb} ({o.unit})</option>)}
+</select>
+</div>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<span style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></span>
+{trendCharts.length>1&&<button style={{background:"none",border:"none",color:C.red+"55",cursor:"pointer",fontSize:"0.55rem"}} onClick={()=>rmTChart(ci)}>✕</button>}
+</div>
+</div>
+<Chart pts={pts} pts2={avg7} color={m.color} color2={C.orange} h={155}/>
+</div>)})}</div>
 </div>)};
 
 /* === WEEKLY REPORT === */
+const RPT_METRICS=[
+{id:"weight",lb:"Δ Peso",em:"⚖️",unit:"kg",color:C.lime,calc:d=>{const wS2=d.length>0?+d[0].weight:S.startWeight;const wE2=d.length>0?+d[d.length-1].weight:S.startWeight;return(wS2-wE2).toFixed(1)},txt:d=>{const wS2=d.length>0?+d[0].weight:S.startWeight;const wE2=d.length>0?+d[d.length-1].weight:S.startWeight;return`Peso: ${wS2} → ${wE2} kg (${(wS2-wE2).toFixed(1)} kg)`}},
+{id:"cal",lb:"Prom Cal",em:"🔥",unit:"kcal",color:C.orange,calc:d=>{const f=d.filter(e=>+e.cal>0);return f.length?(f.reduce((a,e)=>a+(+e.cal),0)/f.length).toFixed(0):"0"},txt:d=>`Cal promedio: ${RPT_METRICS.find(m=>m.id==="cal").calc(d)} kcal/día`},
+{id:"prot",lb:"Prom Prot",em:"🥩",unit:"g",color:C.blue,calc:d=>{const f=d.filter(e=>+e.prot>0);return f.length?(f.reduce((a,e)=>a+(+e.prot),0)/f.length).toFixed(0):"0"},txt:d=>`Prot promedio: ${RPT_METRICS.find(m=>m.id==="prot").calc(d)}g/día`},
+{id:"comp",lb:"Compliance",em:"✓",unit:"días",color:C.green,calc:d=>d.filter(e=>chkComp(e).day).length+"/"+d.length,txt:d=>`Días compliance: ${d.filter(e=>chkComp(e).day).length}/${d.length}`},
+{id:"steps",lb:"Prom Pasos",em:"👟",unit:"pasos",color:C.purple,calc:d=>{const f=d.filter(e=>+e.steps>0);return f.length?(f.reduce((a,e)=>a+(+e.steps),0)/f.length).toFixed(0):"0"},txt:d=>`Pasos promedio: ${(+RPT_METRICS.find(m=>m.id==="steps").calc(d)).toLocaleString()}`},
+{id:"fat",lb:"Prom Grasa",em:"🥑",unit:"g",color:C.red,calc:d=>{const f=d.filter(e=>+e.fat>0);return f.length?(f.reduce((a,e)=>a+(+e.fat),0)/f.length).toFixed(0):"0"},txt:d=>`Grasa promedio: ${RPT_METRICS.find(m=>m.id==="fat").calc(d)}g/día`},
+{id:"carbs",lb:"Prom Carbos",em:"🍚",unit:"g",color:C.cyan,calc:d=>{const f=d.filter(e=>+e.carbs>0);return f.length?(f.reduce((a,e)=>a+(+e.carbs),0)/f.length).toFixed(0):"0"},txt:d=>`Carbos promedio: ${RPT_METRICS.find(m=>m.id==="carbs").calc(d)}g/día`},
+{id:"sugar",lb:"Prom Azúcar",em:"🍬",unit:"g",color:C.pink,calc:d=>{const f=d.filter(e=>+e.sugar>0);return f.length?(f.reduce((a,e)=>a+(+e.sugar),0)/f.length).toFixed(0):"0"},txt:d=>`Azúcar promedio: ${RPT_METRICS.find(m=>m.id==="sugar").calc(d)}g/día`},
+{id:"sleep",lb:"Prom Sueño",em:"😴",unit:"hrs",color:C.cyan,calc:d=>{const f=d.filter(e=>+e.sleep>0);return f.length?(f.reduce((a,e)=>a+(+e.sleep),0)/f.length).toFixed(1):"—"},txt:d=>`Sueño promedio: ${RPT_METRICS.find(m=>m.id==="sleep").calc(d)} hrs`}
+];
 const ReportPage=()=>{
-const[rDateFrom,setRDateFrom]=useState("");const[rDateTo,setRDateTo]=useState("");
+const rDateFrom=gRepFrom,setRDateFrom=setGRepFrom,rDateTo=gRepTo,setRDateTo=setGRepTo;
 const rfl=fl.filter(e=>{if(rDateFrom&&e.date<rDateFrom)return false;if(rDateTo&&e.date>rDateTo)return false;return true});
 const dataSet=rfl.length>0?rfl:fl.slice(-7);
 const activeH=habits.filter(h=>h.active);
 const rDates=rfl.length>0?rfl.map(e=>e.date):getWk();
-const avgCal=dataSet.filter(e=>+e.cal>0).length>0?(dataSet.filter(e=>+e.cal>0).reduce((a,e)=>a+(+e.cal),0)/dataSet.filter(e=>+e.cal>0).length).toFixed(0):0;
-const avgProt=dataSet.filter(e=>+e.prot>0).length>0?(dataSet.filter(e=>+e.prot>0).reduce((a,e)=>a+(+e.prot),0)/dataSet.filter(e=>+e.prot>0).length).toFixed(0):0;
-const compDays=dataSet.filter(e=>chkComp(e).day).length;
-const wS=dataSet.length>0?+dataSet[0].weight:S.startWeight;const wE=dataSet.length>0?+dataSet[dataSet.length-1].weight:S.startWeight;
 let habTot=0,habMax=0;activeH.forEach(h=>{rDates.forEach(dt=>{habMax++;if(hw[`${dt}_${h.id}`])habTot++})});
 const habPct=habMax>0?Math.round(habTot/habMax*100):0;
+const rptCards=S.rptCards||["weight","cal","comp","steps"];
+const setRCard=(idx,mid)=>{const nc=[...rptCards];nc[idx]=mid;sv({...D,settings:{...S,rptCards:nc}})};
+const rptCharts=S.rptCharts||["cal","prot"];
+const setRChart=(idx,mid)=>{const nc=[...rptCharts];nc[idx]=mid;sv({...D,settings:{...S,rptCharts:nc}})};
+const addRChart=()=>{const avail=TREND_METRICS.find(m=>!rptCharts.includes(m.id));if(avail)sv({...D,settings:{...S,rptCharts:[...rptCharts,avail.id]}})};
+const rmRChart=idx=>{if(rptCharts.length<=1)return;const nc=[...rptCharts];nc.splice(idx,1);sv({...D,settings:{...S,rptCharts:nc}})};
 const[copied,setCopied]=useState(false);
 const periodLabel=(rDateFrom||rDateTo)?`${rDateFrom||"inicio"} → ${rDateTo||"hoy"}`:"Última semana";
-const rpt=`📊 REPORTE — ${S.planName}\n${"─".repeat(35)}\n📅 Periodo: ${periodLabel} (${dataSet.length} días)\n\n🏋️ FITNESS\n• Peso: ${wS} → ${wE} kg (${(wS-wE).toFixed(1)} kg)\n• Cal promedio: ${avgCal} kcal/día\n• Prot promedio: ${avgProt}g/día\n• Días compliance: ${compDays}/${dataSet.length}\n• Pasos promedio: ${(+avg(dataSet.filter(e=>+e.steps>0),"steps")).toLocaleString()}\n\n🎯 HÁBITOS: ${habPct}%\n${activeH.map(h=>{let c=0;rDates.forEach(dt=>{if(hw[`${dt}_${h.id}`])c++});return`• ${h.emoji} ${h.name}: ${c}/${rDates.length}`}).join("\n")}\n\n📂 PROYECTOS\n${projects.map(p=>`• ${p.name}: ${p.progress}% — ${p.status}`).join("\n")}\n\n📚 LECTURA\n${books.filter(b=>b.status==="reading").map(b=>`• ${b.title}: ${b.progress}%`).join("\n")}\n\n📅 ${new Date().toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"})}`;
+const rpt=`📊 REPORTE — ${S.planName}\n${"─".repeat(35)}\n📅 Periodo: ${periodLabel} (${dataSet.length} días)\n\n🏋️ FITNESS\n${rptCards.map(mid=>{const m=RPT_METRICS.find(x=>x.id===mid);return m?`• ${m.txt(dataSet)}`:""}).filter(Boolean).join("\n")}\n\n🎯 HÁBITOS: ${habPct}%\n${activeH.map(h=>{let c=0;rDates.forEach(dt=>{if(hw[`${dt}_${h.id}`])c++});return`• ${h.emoji} ${h.name}: ${c}/${rDates.length}`}).join("\n")}\n\n📂 PROYECTOS\n${projects.map(p=>`• ${p.name}: ${p.progress}% — ${p.status}`).join("\n")}\n\n📚 LECTURA\n${books.filter(b=>b.status==="reading").map(b=>`• ${b.title}: ${b.progress}%`).join("\n")}\n\n📅 ${new Date().toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"})}`;
 const copy=()=>{navigator.clipboard.writeText(rpt).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})};
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📋 Reporte</div><button style={z.btn(true)} onClick={copy}>{copied?"✓ Copiado!":"📋 Copiar"}</button></div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📋 Reporte</div><div style={{display:"flex",gap:6}}>{rptCharts.length<TREND_METRICS.length&&<button style={z.btnS(false)} onClick={addRChart}>+ Gráfica</button>}<button style={z.btn(true)} onClick={copy}>{copied?"✓ Copiado!":"📋 Copiar"}</button></div></div>
 <div style={{...z.card,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
 <span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
 <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -488,10 +622,25 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 {(rDateFrom||rDateTo)&&<button style={{...z.btnS(false),padding:"4px 10px",fontSize:"0.65rem"}} onClick={()=>{setRDateFrom("");setRDateTo("")}}>✕ Reset</button>}
 {(rDateFrom||rDateTo)&&<span style={{fontSize:"0.63rem",color:C.lime,fontWeight:600}}>{rfl.length} días</span>}
 </div>
-<G3><div style={z.card}><div style={z.lb}>Δ Peso</div><div style={z.big}>{(wS-wE).toFixed(1)}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kg</div></div>
-<div style={z.card}><div style={z.lb}>Prom Cal</div><div style={z.big}>{avgCal}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>kcal</div></div>
-<div style={z.card}><div style={z.lb}>Compliance</div><div style={z.big}>{compDays}/{dataSet.length}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>días ✓</div></div>
-<div style={z.card}><div style={z.lb}>Hábitos</div><div style={z.big}>{habPct}%</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>completados</div></div></G3>
+<G3>{rptCards.map((mid,ci)=>{const m=RPT_METRICS.find(x=>x.id===mid)||RPT_METRICS[0];const val=m.calc(dataSet);return(<div key={ci} style={z.card}>
+<select style={{background:"transparent",border:"none",color:m.color,fontSize:"0.6rem",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",cursor:"pointer",padding:0,fontFamily:"inherit",outline:"none",appearance:"auto",WebkitAppearance:"menulist",colorScheme:"dark",marginBottom:4}} value={mid} onChange={e=>setRCard(ci,e.target.value)}>
+{RPT_METRICS.map(o=><option key={o.id} value={o.id}>{o.em} {o.lb}</option>)}
+</select>
+<div style={z.big}>{val}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>{m.unit}</div></div>)})}</G3>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>{rptCharts.map((mid,ci)=>{const m=TREND_METRICS.find(x=>x.id===mid)||TREND_METRICS[0];
+const pts=dataSet.filter(m.filter).map(e=>({v:+e[m.key],label:e.date.slice(5)}));
+const avg7=movAvg(dataSet.filter(m.filter),m.key);
+return(<div key={ci} style={z.card}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+<select style={{background:"transparent",border:"none",color:m.color,fontSize:"0.6rem",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",cursor:"pointer",padding:0,fontFamily:"inherit",outline:"none",appearance:"auto",WebkitAppearance:"menulist",colorScheme:"dark"}} value={mid} onChange={e=>setRChart(ci,e.target.value)}>
+{TREND_METRICS.map(o=><option key={o.id} value={o.id}>{o.lb} ({o.unit})</option>)}
+</select>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<span style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></span>
+{rptCharts.length>1&&<button style={{background:"none",border:"none",color:C.red+"55",cursor:"pointer",fontSize:"0.55rem"}} onClick={()=>rmRChart(ci)}>✕</button>}
+</div></div>
+<Chart pts={pts} pts2={avg7} color={m.color} color2={C.orange} h={130}/>
+</div>)})}</div>
 <div style={z.card}><div style={z.lb}>Vista previa</div><pre style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:"0.7rem",color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.7,background:C.bg0,padding:14,borderRadius:10,border:`1px solid ${C.b1}`,overflowX:"auto"}}>{rpt}</pre></div>
 </div>)};
 
@@ -609,10 +758,26 @@ return(
 <div style={z.navI(false)} onClick={()=>{setModal("dayTypes");setSideOpen(false)}}>🔧 Tipos de Día</div>
 <div style={z.navI(false)} onClick={()=>{setModal("settings");setSideOpen(false)}}>⚙ Config</div>
 </div>
-<div style={{padding:"12px 14px",borderTop:`1px solid ${C.b1}`}}>
+<div style={{padding:"12px 14px",borderTop:`1px solid ${C.b1}`,display:"flex",flexDirection:"column",gap:8}}>
 <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:C.lime+"12",border:`1px solid ${C.lime}20`,borderRadius:8,fontSize:"0.65rem",fontWeight:600,color:C.lime}}>
 <span style={{width:6,height:6,background:C.lime,borderRadius:"50%",animation:"pulse 2s infinite"}}/> Sem {Math.min(Math.ceil(dayN/7),S.cutWeeks)}/{S.cutWeeks}
-</div></div></div>
+</div>
+{/* Sync & Auth */}
+{user?(<div style={{display:"flex",flexDirection:"column",gap:6}}>
+<div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:C.bg2,borderRadius:8,fontSize:"0.62rem"}}>
+<img src={user.photoURL||""} style={{width:18,height:18,borderRadius:"50%",border:`1px solid ${C.b1}`}} referrerPolicy="no-referrer"/>
+<span style={{flex:1,color:C.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.displayName||user.email}</span>
+</div>
+<div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 10px",background:C.bg2,borderRadius:8}}>
+<span style={{width:6,height:6,borderRadius:"50%",background:syncStatus==="synced"?C.green:syncStatus==="syncing"?C.orange:syncStatus==="error"?C.red:C.t3,animation:syncStatus==="syncing"?"pulse 1s infinite":"none"}}/>
+<span style={{flex:1,fontSize:"0.58rem",color:C.t2}}>{syncStatus==="synced"?"Sincronizado":syncStatus==="syncing"?"Guardando...":syncStatus==="error"?"Error sync":"Local"}</span>
+<span onClick={signOut} style={{fontSize:"0.58rem",color:C.t3,cursor:"pointer",textDecoration:"underline"}}>Salir</span>
+</div>
+</div>):(<div onClick={signIn} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.bg2,border:`1px solid ${C.b1}`,borderRadius:8,fontSize:"0.68rem",fontWeight:600,color:C.t1,cursor:"pointer"}}>
+<span style={{fontSize:"1rem"}}>🔐</span> Iniciar sesión
+<span style={{fontSize:"0.5rem",color:C.t3,marginLeft:"auto"}}>Sync</span>
+</div>)}
+</div></div>
 
 {/* Main */}
 <div className="main">
