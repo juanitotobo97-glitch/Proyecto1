@@ -93,7 +93,12 @@ const DEF_DT=[
 {id:"dt5",name:"Pesas+Tenis/Padel",emoji:"💪🎾",color:"#22d3ee",cal:2500,prot:180,carbs:280,fat:70,sugar:40,calMin:2500,calMax:2600},
 {id:"dt6",name:"Pesas+Golf",emoji:"💪⛳",color:"#f5a623",cal:2750,prot:180,carbs:300,fat:70,sugar:40,calMin:2750,calMax:2850}];
 
-const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40]};
+const DEF_GOALS=[
+{id:"cut",name:"Cutting",cal:2250,prot:170,fat:65,carbs:220,sugar:40,trainingPerWeek:5},
+{id:"bulk",name:"Bulking",cal:3000,prot:180,fat:80,carbs:350,sugar:50,trainingPerWeek:5},
+{id:"mantenimiento",name:"Mantenimiento",cal:2500,prot:170,fat:70,carbs:280,sugar:45,trainingPerWeek:4},
+{id:"personalizado",name:"Personalizado",cal:2250,prot:170,fat:65,carbs:220,sugar:40,trainingPerWeek:5}];
+const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],goalProfiles:DEF_GOALS,activeGoalProfile:"cut"};
 
 const DEF_HAB=[
 {id:"h1",name:"Gym / Pesas",emoji:"💪",meta:"5x/semana",active:true},
@@ -242,12 +247,17 @@ const chkComp=(e)=>{
   const c=(+e.carbs||0)>=cr[0]&&(+e.carbs||0)<=cr[1]?1:0;
   const su=(+e.sugar||0)>=sr[0]&&(+e.sugar||0)<=sr[1]?1:0;
   const k=(+e.cal||0)>=(dt.calMin||0)&&(+e.cal||0)<=(dt.calMax||99999)?1:0;
-  return{p,g,c,s:su,k,day:p+g+c+su>=3?1:0};
+  return{p,g,c,s:su,k,day:p+g+c+su+k>=4?1:0};
 };
 
 const latest=fl.length>0?fl[fl.length-1]:{weight:S.startWeight,waist:S.startWaist};
 const curW=+(latest.weight||S.startWeight);const curWaist=+(latest.waist||S.startWaist);const wLost=(S.startWeight-curW).toFixed(1);
 const dayN=Math.max(1,Math.floor((new Date()-new Date(S.startDate))/86400000)+1);const totalDays=S.cutWeeks*7;const prog=Math.min(100,Math.round(dayN/totalDays*100));
+const completedWeek=Math.min(Math.floor((dayN-1)/7),S.cutWeeks);const currentWeek=Math.min(Math.ceil(dayN/7),S.cutWeeks);
+const goalProfiles=S.goalProfiles||DEF_GOALS;const activeGP=goalProfiles.find(g=>g.id===S.activeGoalProfile)||goalProfiles[0];
+const setActiveProfile=(pid)=>{sv({...D,settings:{...S,activeGoalProfile:pid}})};
+const updGoalProfile=(pid,u)=>{const gp=goalProfiles.map(g=>g.id===pid?{...g,...u}:g);sv({...D,settings:{...S,goalProfiles:gp}})};
+const validateGoal=(k,v)=>{const ranges={cal:[800,6000],prot:[30,500],fat:[10,300],carbs:[30,800],sugar:[0,200],trainingPerWeek:[0,14]};const r=ranges[k]||[0,99999];return Math.max(r[0],Math.min(r[1],+v||0))};
 const avg=(arr,k)=>arr.length>0?(arr.reduce((a,x)=>a+(+x[k]||0),0)/arr.length).toFixed(0):0;
 const movAvg=(arr,k,w=7)=>{if(arr.length<2)return[];return arr.map((_,i)=>{const st=Math.max(0,i-w+1);const sl=arr.slice(st,i+1).filter(x=>x[k]!==undefined&&x[k]!==null&&x[k]!=="");const a=sl.length>0?sl.reduce((a,x)=>a+(+x[k]||0),0)/sl.length:0;return{date:arr[i].date,v:+a.toFixed(1),label:arr[i].date.slice(5)}})};
 const getWk=()=>{const wk=[];const now=new Date();const dow=now.getDay();const sow=new Date(now);sow.setDate(now.getDate()-(dow===0?6:dow-1));for(let i=0;i<7;i++){const d=new Date(sow);d.setDate(sow.getDate()+i);wk.push(fmtD(d))}return wk};
@@ -296,7 +306,7 @@ const wPts=ffl.filter(e=>e.weight).map(e=>({v:+e.weight,label:e.date.slice(5)}))
 
 const FlModal=({idx,onClose})=>{
 const ex=idx!==null?fl[idx]:null;
-const[f,setF]=useState(ex||{date:todayS(),week:`S${Math.ceil(dayN/7)}`,dayType:"dt2",weight:"",waist:"",cal:"",prot:"",fat:"",carbs:"",sugar:"",steps:"",sleep:"",notes:""});
+const[f,setF]=useState(ex||{date:todayS(),week:`S${currentWeek}`,dayType:"dt2",weight:"",waist:"",cal:"",prot:"",fat:"",carbs:"",sugar:"",steps:"",sleep:"",notes:""});
 const dt=getDT(f.dayType);
 const submit=()=>{const log=[...fl];if(idx!==null)log[idx]={...f};else log.push({...f});log.sort((a,b)=>a.date.localeCompare(b.date));sv({...D,fitnessLog:log});onClose()};
 return(<Mdl title={idx!==null?"Editar Registro":"📊 Nuevo Registro"} onClose={onClose} wide ch={<div>
@@ -319,7 +329,7 @@ const[f,setF]=useState({protRange:[...(S.protRange||[153,999])],fatRange:[...(S.
 const[dtRanges,setDtRanges]=useState(dayTypes.map(t=>({id:t.id,name:t.name,emoji:t.emoji,calMin:t.calMin||0,calMax:t.calMax||9999})));
 const updDR=(i,k,v)=>{const n=[...dtRanges];n[i]={...n[i],[k]:+v};setDtRanges(n)};
 return(<Mdl title="⚙ Intervalos de Compliance" onClose={onClose} wide ch={<div>
-<p style={{fontSize:"0.76rem",color:C.t2,marginBottom:12}}>P✓ G✓ C✓ S✓ = valor dentro del intervalo. DÍA✓ = 3 de 4. K✓ = calorías dentro del rango del tipo de día.</p>
+<p style={{fontSize:"0.76rem",color:C.t2,marginBottom:12}}>P✓ G✓ C✓ S✓ K✓ = valor dentro del intervalo. DÍA✓ = 4 de 5 checks. K✓ = calorías dentro del rango del tipo de día.</p>
 {[["Proteína (P✓)","protRange",C.blue],["Grasas (G✓)","fatRange",C.red],["Carbos (C✓)","carbRange",C.green],["Azúcar (S✓)","sugarRange",C.pink]].map(([l,k,c])=>(<div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}><span style={{width:120,fontSize:"0.78rem",color:c,fontWeight:600}}>{l}</span><span style={{fontSize:"0.7rem",color:C.t3}}>Min:</span><input style={{...z.inpM,maxWidth:75}} type="number" value={f[k][0]} onChange={e=>{const n=[...f[k]];n[0]=+e.target.value;setF({...f,[k]:n})}}/><span style={{fontSize:"0.7rem",color:C.t3}}>Max:</span><input style={{...z.inpM,maxWidth:75}} type="number" value={f[k][1]} onChange={e=>{const n=[...f[k]];n[1]=+e.target.value;setF({...f,[k]:n})}}/></div>))}
 <div style={{...z.lb,marginTop:14}}>🔥 Rango Calorías (K✓) por tipo de día</div>
 {dtRanges.map((dr,i)=>(<div key={dr.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}><span style={{width:130,fontSize:"0.78rem",fontWeight:500}}>{dr.emoji} {dr.name}</span><span style={{fontSize:"0.7rem",color:C.t3}}>Min:</span><input style={{...z.inpM,maxWidth:80}} type="number" value={dr.calMin} onChange={e=>updDR(i,"calMin",e.target.value)}/><span style={{fontSize:"0.7rem",color:C.t3}}>Max:</span><input style={{...z.inpM,maxWidth:80}} type="number" value={dr.calMax} onChange={e=>updDR(i,"calMax",e.target.value)}/></div>))}
@@ -330,7 +340,7 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
 <div><div style={{fontSize:"1.3rem",fontWeight:700}}>🏋️ Mini-Cut Tracker</div><div style={{fontSize:"0.75rem",color:C.t3}}>{S.planGoal}</div></div>
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}><button style={z.btn(true)} onClick={()=>setFlM("new")}>+ Registro</button><button style={z.btnS(false)} onClick={()=>setCompM(true)}>⚙ Intervalos</button></div></div>
-<G3>{[["🔥 Cal",getDT("dt2").cal,"kcal",C.orange],["🥩 Prot",getDT("dt2").prot+"g","g",C.blue],["🥑 Grasa",getDT("dt2").fat+"g","g",C.red],["🍚 Carbos",getDT("dt2").carbs+"g","g",C.green],["🍬 Azúcar","≤"+getDT("dt2").sugar+"g","g",C.pink],["💪 Entrenos",S.trainingPerWeek+"x","sem",C.lime]].map(([l,v,u,c],i)=><div key={i} style={z.card}><div style={{...z.lb,color:c}}>{l}</div><div style={{fontFamily:"monospace",fontSize:"1.1rem",fontWeight:700}}>{v}</div><div style={{fontSize:"0.6rem",color:C.t3}}>{u}</div></div>)}</G3>
+<G3>{[["🔥 Cal",activeGP.cal,"kcal",C.orange,avg(ffl.filter(e=>+e.cal>0),"cal")],["🥩 Prot",activeGP.prot+"g","g",C.blue,avg(ffl.filter(e=>+e.prot>0),"prot")+"g"],["🥑 Grasa",activeGP.fat+"g","g",C.red,avg(ffl.filter(e=>+e.fat>0),"fat")+"g"],["🍚 Carbos",activeGP.carbs+"g","g",C.green,avg(ffl.filter(e=>+e.carbs>0),"carbs")+"g"],["🍬 Azúcar","≤"+activeGP.sugar+"g","g",C.pink,avg(ffl.filter(e=>+e.sugar>0),"sugar")+"g"],["💪 Entrenos",activeGP.trainingPerWeek+"x","sem",C.lime,""]].map(([l,v,u,c,real],i)=><div key={i} style={z.card}><div style={{...z.lb,color:c}}>{l} <span style={{fontSize:"0.5rem",color:C.t3}}>({activeGP.name})</span></div><div style={{fontFamily:"monospace",fontSize:"1.1rem",fontWeight:700}}>{v}</div>{real&&<div style={{fontSize:"0.6rem",color:C.t2,marginTop:2}}>Real: {real}</div>}<div style={{fontSize:"0.6rem",color:C.t3}}>{u}</div></div>)}</G3>
 <div style={{...z.card,padding:"12px 16px",marginTop:4}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{...z.lb,marginBottom:0}}>Progreso</span><span style={{fontFamily:"monospace",fontSize:"0.72rem",color:C.lime}}>Día {Math.min(dayN,totalDays)}/{totalDays} — {prog}%</span></div><div style={{width:"100%",height:7,background:C.bg3,borderRadius:100,overflow:"hidden"}}><div style={{height:"100%",borderRadius:100,width:`${prog}%`,background:`linear-gradient(90deg,${C.lime},#8aff00)`}}/></div></div>
 <div style={{...z.card,padding:"10px 14px",marginTop:4,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
 <span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
@@ -362,7 +372,7 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <span style={{...z.lb,marginBottom:0}}>Intervalos:</span>
 {[["P✓",S.protRange||[153,999],C.blue],["G✓",S.fatRange||[0,75],C.red],["C✓",S.carbRange||[0,999],C.green],["S✓",S.sugarRange||[0,40],C.pink]].map(([l,r,c])=><span key={l} style={{fontSize:"0.68rem",color:c,fontWeight:600}}>{l}:{r[0]}–{r[1]}g</span>)}
 <span style={{fontSize:"0.68rem",color:C.orange,fontWeight:600}}>K✓: por tipo</span>
-<span style={{fontSize:"0.68rem",color:C.t3}}>DÍA✓=3/4</span></div>
+<span style={{fontSize:"0.68rem",color:C.t3}}>DÍA✓=4/5</span></div>
 <div style={z.card}><div style={z.lb}>📊 Progreso Semanal</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:750}}>
 <thead><tr>{["Fecha","Tipo","Peso","Cintura","Cal","Prot","Grasa","Carbos","Azúcar","Pasos","P✓","G✓","C✓","S✓","K✓","DÍA"].map(h=><th key={h} style={{...z.th,padding:"5px 3px"}}>{h}</th>)}</tr></thead>
 <tbody>{ffl.map((e,i)=>{const oi=fl.indexOf(e);const comp=chkComp(e);const dt=getDT(e.dayType);return(<tr key={oi} style={{cursor:"pointer"}} onClick={()=>setFlM(oi)}>
@@ -481,6 +491,30 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <tbody>{activeH.map((h,hi)=>{const wc=wkCnt.find(x=>x.id===h.id)?.c||0;return(<tr key={h.id}><td style={{...z.td,fontWeight:500,cursor:"pointer"}} onClick={()=>openHab(habits.findIndex(x=>x.id===h.id))}>{h.emoji} {h.name} ✏️</td><td style={{...z.td,fontSize:"0.65rem",color:C.t3}}>{h.meta}</td>
 {wk.map((dt,i)=>{const key=`${dt}_${h.id}`;const done=hw[key];return<td key={i} style={{...z.td,textAlign:"center",cursor:"pointer",padding:"4px 2px"}} onClick={()=>{const n={...hw};n[key]=!done;sv({...D,habitWeekly:n})}}><span style={{display:"inline-block",width:24,height:24,borderRadius:6,lineHeight:"24px",fontSize:"0.66rem",background:done?C.lime:C.bg3,color:done?C.bg0:C.t3,fontWeight:700}}>{done?"✓":""}</span></td>})}
 <td style={{...z.td,textAlign:"center",fontFamily:"monospace",fontWeight:600}}>{wc}/7</td></tr>)})}</tbody></table></div></div>
+
+{/* === HISTORIAL ÚLTIMO MES === */}
+{(()=>{
+const[histWeekOff,setHistWeekOff]=useState(1);
+const getHistWeek=(off)=>{const dates=[];const now=new Date();const endDate=new Date(now);endDate.setDate(now.getDate()-off*7);const startDate=new Date(endDate);startDate.setDate(endDate.getDate()-6);for(let d=new Date(startDate);d<=endDate;d.setDate(d.getDate()+1))dates.push(fmtD(new Date(d)));return dates};
+const histDates=getHistWeek(histWeekOff);
+const maxOff=4;
+const histWkLabel=`${histDates[0].slice(5)} → ${histDates[histDates.length-1].slice(5)}`;
+const histDows=histDates.map(dt=>{const d=new Date(dt);return DOWS[d.getDay()===0?6:d.getDay()-1]});
+return(<div style={{...z.card,marginTop:4}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap",gap:6}}>
+<div style={z.lb}>📅 Editar Historial (último mes)</div>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<button style={z.btnS(false)} disabled={histWeekOff>=maxOff} onClick={()=>setHistWeekOff(Math.min(maxOff,histWeekOff+1))}>← Ant</button>
+<span style={{fontFamily:"monospace",fontSize:"0.68rem",color:C.cyan,fontWeight:600}}>{histWkLabel}</span>
+<button style={z.btnS(false)} disabled={histWeekOff<=1} onClick={()=>setHistWeekOff(Math.max(1,histWeekOff-1))}>Sig →</button>
+</div></div>
+<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:500}}>
+<thead><tr><th style={z.th}>Hábito</th>{histDates.map((dt,i)=><th key={i} style={{...z.th,textAlign:"center"}}><div>{histDows[i]}</div><div style={{fontSize:"0.45rem",color:C.t3}}>{dt.slice(5)}</div></th>)}<th style={{...z.th,textAlign:"center"}}>Score</th></tr></thead>
+<tbody>{activeH.map(h=>{let sc=0;histDates.forEach(dt=>{if(hw[`${dt}_${h.id}`])sc++});return(<tr key={h.id}><td style={{...z.td,fontWeight:500,fontSize:"0.72rem"}}>{h.emoji} {h.name}</td>
+{histDates.map((dt,i)=>{const key=`${dt}_${h.id}`;const done=hw[key];return<td key={i} style={{...z.td,textAlign:"center",cursor:"pointer",padding:"4px 2px"}} onClick={()=>{const n={...hw};n[key]=!done;sv({...D,habitWeekly:n})}}><span style={{display:"inline-block",width:24,height:24,borderRadius:6,lineHeight:"24px",fontSize:"0.66rem",background:done?C.cyan:C.bg3,color:done?C.bg0:C.t3,fontWeight:700}}>{done?"✓":""}</span></td>})}
+<td style={{...z.td,textAlign:"center",fontFamily:"monospace",fontWeight:600,color:C.cyan}}>{sc}/7</td></tr>)})}</tbody></table></div>
+</div>)})()}
+
 {editH!==null&&hf&&<Mdl title="✏️ Hábito" onClose={saveHab} ch={<div style={{display:"flex",flexDirection:"column",gap:10}}>
 <G2><div><div style={{...z.lb,marginBottom:4}}>Emoji</div><input style={z.inp} value={hf.emoji} onChange={e=>setHf({...hf,emoji:e.target.value})}/></div><div><div style={{...z.lb,marginBottom:4}}>Nombre</div><input style={z.inp} value={hf.name} onChange={e=>setHf({...hf,name:e.target.value})}/></div></G2>
 <div><div style={{...z.lb,marginBottom:4}}>Meta</div><input style={z.inp} value={hf.meta} onChange={e=>setHf({...hf,meta:e.target.value})}/></div>
@@ -616,15 +650,14 @@ const activeH=habits.filter(h=>h.active);
 const rDates=rfl.length>0?rfl.map(e=>e.date):getWk();
 let habTot=0,habMax=0;activeH.forEach(h=>{rDates.forEach(dt=>{habMax++;if(hw[`${dt}_${h.id}`])habTot++})});
 const habPct=habMax>0?Math.round(habTot/habMax*100):0;
-const rptCards=S.rptCards||["weight","cal","comp","steps"];
-const setRCard=(idx,mid)=>{const nc=[...rptCards];nc[idx]=mid;sv({...D,settings:{...S,rptCards:nc}})};
+const rptCards=RPT_METRICS.map(m=>m.id);
 const rptCharts=S.rptCharts||["cal","prot"];
 const setRChart=(idx,mid)=>{const nc=[...rptCharts];nc[idx]=mid;sv({...D,settings:{...S,rptCharts:nc}})};
 const addRChart=()=>{const avail=TREND_METRICS.find(m=>!rptCharts.includes(m.id));if(avail)sv({...D,settings:{...S,rptCharts:[...rptCharts,avail.id]}})};
 const rmRChart=idx=>{if(rptCharts.length<=1)return;const nc=[...rptCharts];nc.splice(idx,1);sv({...D,settings:{...S,rptCharts:nc}})};
 const[copied,setCopied]=useState(false);
 const periodLabel=(rDateFrom||rDateTo)?`${rDateFrom||"inicio"} → ${rDateTo||"hoy"}`:"Última semana";
-const rpt=`📊 REPORTE — ${S.planName}\n${"─".repeat(35)}\n📅 Periodo: ${periodLabel} (${dataSet.length} días)\n\n🏋️ FITNESS\n${rptCards.map(mid=>{const m=RPT_METRICS.find(x=>x.id===mid);return m?`• ${m.txt(dataSet)}`:""}).filter(Boolean).join("\n")}\n\n🎯 HÁBITOS: ${habPct}%\n${activeH.map(h=>{let c=0;rDates.forEach(dt=>{if(hw[`${dt}_${h.id}`])c++});return`• ${h.emoji} ${h.name}: ${c}/${rDates.length}`}).join("\n")}\n\n📂 PROYECTOS\n${projects.map(p=>`• ${p.name}: ${p.progress}% — ${p.status}`).join("\n")}\n\n📚 LECTURA\n${books.filter(b=>b.status==="reading").map(b=>`• ${b.title}: ${b.progress}%`).join("\n")}\n\n📅 ${new Date().toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"})}`;
+const rpt=`📊 REPORTE — ${S.planName}\n${"─".repeat(35)}\n📅 Periodo: ${periodLabel} (${dataSet.length} días)\n\n🏋️ FITNESS\n${RPT_METRICS.map(m=>`• ${m.txt(dataSet)}`).join("\n")}\n\n🎯 HÁBITOS: ${habPct}%\n${activeH.map(h=>{let c=0;rDates.forEach(dt=>{if(hw[`${dt}_${h.id}`])c++});return`• ${h.emoji} ${h.name}: ${c}/${rDates.length}`}).join("\n")}\n\n📂 PROYECTOS\n${projects.map(p=>`• ${p.name}: ${p.progress}% — ${p.status}`).join("\n")}\n\n📚 LECTURA\n${books.filter(b=>b.status==="reading").map(b=>`• ${b.title}: ${b.progress}%`).join("\n")}\n\n📅 ${new Date().toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"})}`;
 const copy=()=>{navigator.clipboard.writeText(rpt).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})};
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📋 Reporte</div><div style={{display:"flex",gap:6}}>{rptCharts.length<TREND_METRICS.length&&<button style={z.btnS(false)} onClick={addRChart}>+ Gráfica</button>}<button style={z.btn(true)} onClick={copy}>{copied?"✓ Copiado!":"📋 Copiar"}</button></div></div>
@@ -642,9 +675,7 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 {(rDateFrom||rDateTo)&&<span style={{fontSize:"0.63rem",color:C.lime,fontWeight:600}}>{rfl.length} días</span>}
 </div>
 <G3>{rptCards.map((mid,ci)=>{const m=RPT_METRICS.find(x=>x.id===mid)||RPT_METRICS[0];const val=m.calc(dataSet);return(<div key={ci} style={z.card}>
-<select style={{background:"transparent",border:"none",color:m.color,fontSize:"0.6rem",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",cursor:"pointer",padding:0,fontFamily:"inherit",outline:"none",appearance:"auto",WebkitAppearance:"menulist",colorScheme:"dark",marginBottom:4}} value={mid} onChange={e=>setRCard(ci,e.target.value)}>
-{RPT_METRICS.map(o=><option key={o.id} value={o.id}>{o.em} {o.lb}</option>)}
-</select>
+<div style={{fontSize:"0.6rem",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",color:m.color,marginBottom:4}}>{m.em} {m.lb}</div>
 <div style={z.big}>{val}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>{m.unit}</div></div>)})}</G3>
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>{rptCharts.map((mid,ci)=>{const m=TREND_METRICS.find(x=>x.id===mid)||TREND_METRICS[0];
 const pts=dataSet.filter(m.filter).map(e=>({v:+e[m.key],label:e.date.slice(5)}));
@@ -674,6 +705,52 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <div><div style={{fontSize:"1.4rem",fontWeight:800}}>⚡ Life Dashboard</div><div style={{fontSize:"0.75rem",color:C.t3}}>Proyectos · Hábitos · Horario · Lectura · Fitness</div></div>
 <div style={{fontFamily:"monospace",fontSize:"0.75rem",color:C.t2,padding:"6px 12px",background:C.bg2,border:`1px solid ${C.b1}`,borderRadius:8}}>{new Date().toLocaleDateString("es",{weekday:"long",day:"numeric",month:"short"})}</div></div>
 
+{/* === GOALS SECTION === */}
+{(()=>{
+const[goalsEdit,setGoalsEdit]=useState(false);
+const[gf,setGf]=useState(null);
+const wkFl=fl.filter(e=>{const w=getWk();return w.includes(e.date)});
+const realCal=wkFl.length>0?Math.round(wkFl.filter(e=>+e.cal>0).reduce((a,x)=>a+(+x.cal||0),0)/wkFl.filter(e=>+e.cal>0).length):0;
+const realProt=wkFl.length>0?Math.round(wkFl.filter(e=>+e.prot>0).reduce((a,x)=>a+(+x.prot||0),0)/wkFl.filter(e=>+e.prot>0).length):0;
+const realFat=wkFl.length>0?Math.round(wkFl.filter(e=>+e.fat>0).reduce((a,x)=>a+(+x.fat||0),0)/wkFl.filter(e=>+e.fat>0).length):0;
+const realCarbs=wkFl.length>0?Math.round(wkFl.filter(e=>+e.carbs>0).reduce((a,x)=>a+(+x.carbs||0),0)/wkFl.filter(e=>+e.carbs>0).length):0;
+const realSugar=wkFl.length>0?Math.round(wkFl.filter(e=>+e.sugar>0).reduce((a,x)=>a+(+x.sugar||0),0)/wkFl.filter(e=>+e.sugar>0).length):0;
+const goalRows=[
+{lb:"Calorías",key:"cal",em:"🔥",c:C.orange,unit:"kcal",goal:activeGP.cal,real:realCal},
+{lb:"Proteína",key:"prot",em:"🥩",c:C.blue,unit:"g",goal:activeGP.prot,real:realProt},
+{lb:"Grasas",key:"fat",em:"🥑",c:C.red,unit:"g",goal:activeGP.fat,real:realFat},
+{lb:"Carbos",key:"carbs",em:"🍚",c:C.green,unit:"g",goal:activeGP.carbs,real:realCarbs},
+{lb:"Azúcar máx",key:"sugar",em:"🍬",c:C.pink,unit:"g",goal:activeGP.sugar,real:realSugar},
+{lb:"Entrenos/sem",key:"trainingPerWeek",em:"💪",c:C.lime,unit:"x",goal:activeGP.trainingPerWeek,real:""}
+];
+return(<div style={z.card}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<div style={z.lb}>🎯 Objetivos — {activeGP.name}</div>
+<div style={{display:"flex",gap:6}}>
+<select style={{...z.inpM,padding:"4px 8px",fontSize:"0.65rem",maxWidth:130,colorScheme:"dark"}} value={S.activeGoalProfile||"cut"} onChange={e=>setActiveProfile(e.target.value)}>
+{goalProfiles.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+</select>
+<button style={z.btnS(false)} onClick={()=>{setGoalsEdit(!goalsEdit);setGf({...activeGP})}}>✏️</button>
+</div></div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8}}>
+{goalRows.map(r=>(<div key={r.key} style={{padding:"8px 10px",background:C.bg2,borderRadius:8,border:`1px solid ${C.b1}`}}>
+<div style={{fontSize:"0.58rem",textTransform:"uppercase",letterSpacing:1,color:r.c,fontWeight:600,marginBottom:4}}>{r.em} {r.lb}</div>
+<div style={{fontFamily:"monospace",fontSize:"1rem",fontWeight:700}}>{r.goal}{r.unit==="kcal"?"":""} <span style={{fontSize:"0.6rem",color:C.t3}}>{r.unit}</span></div>
+{r.real!==""&&<div style={{fontSize:"0.65rem",color:r.real<=r.goal*1.1&&r.real>=r.goal*0.9?C.green:C.orange,marginTop:3}}>Real: {r.real} {r.unit} {r.real<=r.goal*1.1&&r.real>=r.goal*0.9?"✓":"⚠"}</div>}
+</div>))}
+</div>
+{goalsEdit&&gf&&<div style={{marginTop:12,padding:14,background:C.bg2,borderRadius:10,border:`1px solid ${C.b1}`}}>
+<div style={{fontSize:"0.78rem",fontWeight:600,marginBottom:10}}>Editar perfil: {gf.name}</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8,marginBottom:10}}>
+{[["Calorías","cal"],["Proteína","prot"],["Grasas","fat"],["Carbos","carbs"],["Azúcar máx","sugar"],["Entrenos/sem","trainingPerWeek"]].map(([l,k])=>(<div key={k}><div style={{fontSize:"0.58rem",color:C.t3,marginBottom:3}}>{l}</div><input style={z.inpM} type="number" value={gf[k]} onChange={e=>setGf({...gf,[k]:validateGoal(k,e.target.value)})}/></div>))}
+</div>
+<div style={{display:"flex",gap:6}}>
+<button style={z.btn(true)} onClick={()=>{updGoalProfile(activeGP.id,gf);setGoalsEdit(false)}}>Guardar</button>
+<button style={z.btn(false)} onClick={()=>setGoalsEdit(false)}>Cancelar</button>
+</div>
+</div>}
+</div>)})()}
+
 <div style={z.card}><div style={z.lb}>📂 Proyectos</div>
 {projects.map(p=>(<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.b1}`,flexWrap:"wrap"}}>
 <span style={{fontWeight:600,flex:1,fontSize:"0.83rem",minWidth:100}}>{p.name}</span>
@@ -693,7 +770,8 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <div><span style={{color:C.t3}}>Peso</span><div style={{fontFamily:"monospace",fontWeight:600}}>{curW} kg</div></div>
 <div><span style={{color:C.t3}}>Meta</span><div style={{fontFamily:"monospace",fontWeight:600}}>{S.planGoal}</div></div>
 <div><span style={{color:C.t3}}>Progreso</span><div style={{fontFamily:"monospace",fontWeight:600}}>{prog}%</div></div>
-<div><span style={{color:C.t3}}>Sem</span><div style={{fontFamily:"monospace",fontWeight:600}}>{Math.min(Math.ceil(dayN/7),S.cutWeeks)}/{S.cutWeeks}</div></div></div></div>
+<div><span style={{color:C.t3}}>Sem completada</span><div style={{fontFamily:"monospace",fontWeight:600}}>{completedWeek}/{S.cutWeeks}</div></div>
+<div><span style={{color:C.t3}}>Sem en curso</span><div style={{fontFamily:"monospace",fontWeight:600}}>{currentWeek}/{S.cutWeeks}</div></div></div></div>
 <div style={z.card}><div style={z.lb}>📚 Lectura</div>
 {books.filter(b=>b.status==="reading").map(b=>(<div key={b.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
 <span style={{flex:1,fontWeight:500,fontSize:"0.78rem"}}>{b.title}</span>
@@ -779,7 +857,7 @@ return(
 </div>
 <div style={{padding:"12px 14px",borderTop:`1px solid ${C.b1}`,display:"flex",flexDirection:"column",gap:8}}>
 <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:C.lime+"12",border:`1px solid ${C.lime}20`,borderRadius:8,fontSize:"0.65rem",fontWeight:600,color:C.lime}}>
-<span style={{width:6,height:6,background:C.lime,borderRadius:"50%",animation:"pulse 2s infinite"}}/> Sem {Math.min(Math.ceil(dayN/7),S.cutWeeks)}/{S.cutWeeks}
+<span style={{width:6,height:6,background:C.lime,borderRadius:"50%",animation:"pulse 2s infinite"}}/> Sem {completedWeek}/{S.cutWeeks} <span style={{fontSize:"0.5rem",color:C.t3}}>(en curso: {currentWeek})</span>
 </div>
 {/* Sync & Auth */}
 {user?(<div style={{display:"flex",flexDirection:"column",gap:6}}>
