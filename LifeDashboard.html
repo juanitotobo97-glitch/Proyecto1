@@ -160,6 +160,7 @@ const[D,setD]=useState(null);const[ld,setLd]=useState(true);const[pg,setPg]=useS
 /* Auth state */
 const[user,setUser]=useState(null);const[authLoading,setAuthLoading]=useState(true);
 const[syncStatus,setSyncStatus]=useState("offline"); /* synced | syncing | offline | error */
+const[syncError,setSyncError]=useState("");
 const saveTimer=useRef(null);
 /* Global date filters — persist across page switches */
 const[gFitFrom,setGFitFrom]=useState("");const[gFitTo,setGFitTo]=useState("");
@@ -171,7 +172,7 @@ const[gHabFrom,setGHabFrom]=useState("");const[gHabTo,setGHabTo]=useState("");
 useEffect(()=>{
   if(!fbAuth){setAuthLoading(false);return}
   /* Handle redirect result (mobile login returns here) */
-  fbAuth.getRedirectResult().catch(()=>{});
+  fbAuth.getRedirectResult().catch(e=>{setSyncError("Auth redirect: "+e.message)});
   const unsub=fbAuth.onAuthStateChanged(u=>{setUser(u);setAuthLoading(false)});
   return()=>unsub();
 },[]);
@@ -192,12 +193,13 @@ useEffect(()=>{
       if(doc.exists){
         const p=doc.data();const merged=deepMerge(p);
         setD(merged);localStorage.setItem(KEY,JSON.stringify(merged));
+        setSyncError("");
       } else{/* First time: upload localStorage data to Firestore */
         const local=localStorage.getItem(KEY);const parsed=local?deepMerge(JSON.parse(local)):{...DEF};
-        setD(parsed);fbDb.collection("users").doc(user.uid).set(parsed).catch(()=>{});
+        setD(parsed);fbDb.collection("users").doc(user.uid).set(parsed).catch(er=>{setSyncError("Save: "+er.message)});
       }
       setSyncStatus("synced");setLd(false);
-    },()=>{loadLocal()});
+    },err=>{setSyncError("Firestore: "+err.message);loadLocal()});
     return()=>unsub();
   } else { loadLocal(); }
 },[user,authLoading]);
@@ -217,11 +219,14 @@ const sv=useCallback(nd=>{
 },[user]);
 
 /* Auth helpers */
-const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-const signIn=()=>{if(!fbAuth)return alert("Firebase no configurado. Edita FIREBASE_CONFIG en el HTML.");
+const signIn=()=>{if(!fbAuth)return setSyncError("Firebase no configurado. Edita FIREBASE_CONFIG en el HTML.");
   const provider=new firebase.auth.GoogleAuthProvider();
-  if(isMobile){fbAuth.signInWithRedirect(provider)}
-  else{fbAuth.signInWithPopup(provider).catch(e=>alert("Error: "+e.message))}};
+  fbAuth.signInWithPopup(provider).catch(e=>{
+    /* If popup blocked (common on mobile), fall back to redirect */
+    if(e.code==="auth/popup-blocked"||e.code==="auth/popup-closed-by-browser"||e.code==="auth/cancelled-popup-request"){
+      fbAuth.signInWithRedirect(provider);
+    } else { setSyncError("Login: "+e.code+" - "+e.message) }
+  })};
 const signOut=()=>{if(fbAuth)fbAuth.signOut()};
 const go=p=>{setPg(p);setSideOpen(false)};
 
@@ -795,6 +800,12 @@ return(
 
 {/* Main */}
 <div className="main">
+{/* Sync error banner - visible on all devices */}
+{syncError&&<div onClick={()=>setSyncError("")} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",margin:"0 0 12px",background:C.red+"18",border:`1px solid ${C.red}40`,borderRadius:10,cursor:"pointer"}}>
+<span style={{fontSize:"1rem"}}>⚠️</span>
+<div style={{flex:1,fontSize:"0.7rem",color:C.red,wordBreak:"break-word"}}>{syncError}</div>
+<span style={{fontSize:"0.6rem",color:C.t3}}>✕</span>
+</div>}
 {/* Mobile login banner - visible only on mobile when not logged in */}
 {!user&&!authLoading&&<div className="mob-login-banner" onClick={signIn} style={{display:"none",alignItems:"center",gap:10,padding:"10px 14px",margin:"0 0 12px",background:`linear-gradient(135deg,${C.bg2},${C.bg3})`,border:`1px solid ${C.lime}30`,borderRadius:10,cursor:"pointer"}}>
 <span style={{fontSize:"1.4rem"}}>🔐</span>
