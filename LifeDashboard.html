@@ -167,14 +167,17 @@ const[gTrendFrom,setGTrendFrom]=useState("");const[gTrendTo,setGTrendTo]=useStat
 const[gRepFrom,setGRepFrom]=useState("");const[gRepTo,setGRepTo]=useState("");
 const[gHabFrom,setGHabFrom]=useState("");const[gHabTo,setGHabTo]=useState("");
 
-/* Listen to Firebase auth state */
+/* Listen to Firebase auth state + handle redirect result */
 useEffect(()=>{
   if(!fbAuth){setAuthLoading(false);return}
+  /* Handle redirect result (mobile login returns here) */
+  fbAuth.getRedirectResult().catch(()=>{});
   const unsub=fbAuth.onAuthStateChanged(u=>{setUser(u);setAuthLoading(false)});
   return()=>unsub();
 },[]);
 
-/* Load data: from Firestore if logged in, else localStorage */
+/* Load data: real-time Firestore listener if logged in, else localStorage */
+const skipNextSnapshot=useRef(false);
 useEffect(()=>{
   if(authLoading)return;
   const loadLocal=()=>{
@@ -183,14 +186,19 @@ useEffect(()=>{
   };
   if(user&&fbDb){
     setSyncStatus("syncing");
-    fbDb.collection("users").doc(user.uid).get().then(doc=>{
-      if(doc.exists){const p=doc.data();setD(deepMerge(p));localStorage.setItem(KEY,JSON.stringify(deepMerge(p)))}
-      else{/* First time: upload localStorage data to Firestore */
+    /* Real-time listener: syncs changes across devices */
+    const unsub=fbDb.collection("users").doc(user.uid).onSnapshot(doc=>{
+      if(skipNextSnapshot.current){skipNextSnapshot.current=false;return}
+      if(doc.exists){
+        const p=doc.data();const merged=deepMerge(p);
+        setD(merged);localStorage.setItem(KEY,JSON.stringify(merged));
+      } else{/* First time: upload localStorage data to Firestore */
         const local=localStorage.getItem(KEY);const parsed=local?deepMerge(JSON.parse(local)):{...DEF};
         setD(parsed);fbDb.collection("users").doc(user.uid).set(parsed).catch(()=>{});
       }
       setSyncStatus("synced");setLd(false);
-    }).catch(()=>{loadLocal()});
+    },()=>{loadLocal()});
+    return()=>unsub();
   } else { loadLocal(); }
 },[user,authLoading]);
 
@@ -202,14 +210,18 @@ const sv=useCallback(nd=>{
     setSyncStatus("syncing");
     if(saveTimer.current)clearTimeout(saveTimer.current);
     saveTimer.current=setTimeout(()=>{
-      fbDb.collection("users").doc(user.uid).set(nd).then(()=>setSyncStatus("synced")).catch(()=>setSyncStatus("error"));
+      skipNextSnapshot.current=true;
+      fbDb.collection("users").doc(user.uid).set(nd).then(()=>setSyncStatus("synced")).catch(()=>{skipNextSnapshot.current=false;setSyncStatus("error")});
     },1500);
   }
 },[user]);
 
 /* Auth helpers */
+const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 const signIn=()=>{if(!fbAuth)return alert("Firebase no configurado. Edita FIREBASE_CONFIG en el HTML.");
-  fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>alert("Error: "+e.message))};
+  const provider=new firebase.auth.GoogleAuthProvider();
+  if(isMobile){fbAuth.signInWithRedirect(provider)}
+  else{fbAuth.signInWithPopup(provider).catch(e=>alert("Error: "+e.message))}};
 const signOut=()=>{if(fbAuth)fbAuth.signOut()};
 const go=p=>{setPg(p);setSideOpen(false)};
 
