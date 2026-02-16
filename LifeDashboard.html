@@ -1010,50 +1010,67 @@ INSTRUCCIÓN: Selecciona el producto que mejor coincida con lo que el usuario de
 No se encontraron resultados exactos en la base de datos. Usa la tabla de referencia y tus conocimientos nutricionales.
 `;
     setLoadStatus("🤖 Calculando macros...");
-    const prompt=`Eres un nutricionista experto. Tu trabajo es calcular macronutrientes con PRECISIÓN REAL.
+    const prompt=`Eres un nutricionista experto. Desglosa CADA alimento por separado con sus macros individuales.
 ${dbSection}
-TABLA DE REFERENCIA GENERAL (por 100g, usar solo si no hay datos de la base de datos):
-- Avena en hojuelas: 389cal, 13.2g prot, 6.5g grasa, 66g carbs
-- Arroz blanco cocido: 130cal, 2.7g prot, 0.3g grasa, 28g carbs
-- Pechuga de pollo: 165cal, 31g prot, 3.6g grasa, 0g carbs
-- Huevo entero (50g): 72cal, 6.3g prot, 4.8g grasa, 0.4g carbs
-- Banano (120g): 105cal, 1.3g prot, 0.4g grasa, 27g carbs
-- Pan blanco: 265cal, 9g prot, 3.2g grasa, 49g carbs
-- Pasta cocida: 158cal, 5.8g prot, 0.9g grasa, 31g carbs
-- Leche entera: 61cal, 3.2g prot, 3.3g grasa, 4.8g carbs
-- Carne res molida: 250cal, 26g prot, 15g grasa, 0g carbs
-- Atún en lata: 116cal, 25.5g prot, 0.8g grasa, 0g carbs
-- Frijol cocido: 127cal, 8.7g prot, 0.5g grasa, 22g carbs
-- Aguacate: 160cal, 2g prot, 15g grasa, 9g carbs
-- Papa cocida: 87cal, 1.9g prot, 0.1g grasa, 20g carbs
-- Arepa de maíz: 200cal, 4g prot, 2g grasa, 43g carbs
-- Whey protein (scoop 30g): 120cal, 24g prot, 1.5g grasa, 3g carbs
+TABLA DE REFERENCIA (por 100g, usar solo si no hay datos de la base de datos):
+- Avena en hojuelas: 389cal, 13.2g prot, 6.5g grasa, 66g carbs, 1g azúcar
+- Arroz blanco cocido: 130cal, 2.7g prot, 0.3g grasa, 28g carbs, 0g azúcar
+- Pechuga de pollo: 165cal, 31g prot, 3.6g grasa, 0g carbs, 0g azúcar
+- Huevo entero (50g): 72cal, 6.3g prot, 4.8g grasa, 0.4g carbs, 0.4g azúcar
+- Clara de huevo (33g): 17cal, 3.6g prot, 0.1g grasa, 0.2g carbs, 0.2g azúcar
+- Banano (120g): 105cal, 1.3g prot, 0.4g grasa, 27g carbs, 14g azúcar
+- Pan blanco (rebanada 30g): 80cal, 2.7g prot, 1g grasa, 15g carbs, 1.5g azúcar
+- Pasta cocida: 158cal, 5.8g prot, 0.9g grasa, 31g carbs, 0.6g azúcar
+- Leche entera: 61cal, 3.2g prot, 3.3g grasa, 4.8g carbs, 5g azúcar
+- Carne res molida: 250cal, 26g prot, 15g grasa, 0g carbs, 0g azúcar
+- Atún en lata: 116cal, 25.5g prot, 0.8g grasa, 0g carbs, 0g azúcar
+- Frijol cocido: 127cal, 8.7g prot, 0.5g grasa, 22g carbs, 0.3g azúcar
+- Aguacate: 160cal, 2g prot, 15g grasa, 9g carbs, 0.7g azúcar
+- Papa cocida: 87cal, 1.9g prot, 0.1g grasa, 20g carbs, 0.8g azúcar
+- Arepa de maíz: 200cal, 4g prot, 2g grasa, 43g carbs, 1g azúcar
+- Whey protein (scoop 30g): 120cal, 24g prot, 1.5g grasa, 3g carbs, 1g azúcar
+- Yogurt natural (100ml): 60cal, 3.5g prot, 3.3g grasa, 4.7g carbs, 4.7g azúcar
+- Plátano maduro frito: 265cal, 1.2g prot, 11g grasa, 42g carbs, 18g azúcar
+- Aceite/mantequilla (1 cda 14g): 120cal, 0g prot, 14g grasa, 0g carbs, 0g azúcar
 
-REGLAS CRÍTICAS:
-1. Si hay datos de la base de datos, ÚSALOS. Escoge el producto que mejor coincida con lo descrito
-2. CALCULA proporcionalmente: si dice "60g", calcula 60/100 × valores_por_100g
-3. VERIFICACIÓN: cal ≈ (prot×4) + (grasa×9) + (carbs×4). Si no cuadra, RECALCULA
+REGLAS:
+1. Devuelve CADA alimento como un item separado en el array "items"
+2. Si hay datos de la base de datos, ÚSALOS para ese alimento
+3. Calcula proporcionalmente según la cantidad: Xg/100g × valores_por_100g
 4. Si no menciona cantidad, asume porción normal/mediana
-5. Si describe varias comidas, suma TODOS los macros
-6. Redondea a enteros
-7. En el "detail", indica si los datos vienen de la base de datos real o son estimados
-8. Si usaste datos de la base de datos, incluye la marca/producto específico que usaste
+5. NO sumes los totales, yo los sumo en código
+6. Para cada item verifica: cal ≈ (prot×4)+(fat×9)+(carbs×4). Si no cuadra, recalcula ESE item
+7. "source" es "db" si usaste datos de OpenFoodFacts, "ref" si usaste la tabla, "est" si estimaste
 
-La comida que el usuario describió es: "${foodText}"
+Comida: "${foodText}"
 
-Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional:
-{"cal":250,"prot":20,"fat":10,"carbs":30,"sugar":5,"detail":"desglose con fuente de datos","source":"database" o "estimated"}
+Responde SOLO JSON válido, sin texto adicional:
+{"items":[{"name":"60g avena","cal":233,"prot":8,"fat":4,"carbs":40,"sugar":1,"source":"ref"},{"name":"1 banano","cal":105,"prot":1,"fat":0,"carbs":27,"sugar":14,"source":"ref"}]}
 
 ${buildContext()}`;
     const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
     const jsonMatch=resp.match(/\{[\s\S]*\}/);
     if(jsonMatch){
       const parsed=JSON.parse(jsonMatch[0]);
-      const food={cal:Math.round(+parsed.cal||0),prot:Math.round(+parsed.prot||0),fat:Math.round(+parsed.fat||0),carbs:Math.round(+parsed.carbs||0),sugar:Math.round(+parsed.sugar||0),detail:parsed.detail||""};
+      /* Support both old format {cal,prot,...} and new {items:[...]} */
+      let items=parsed.items;
+      if(!items||!Array.isArray(items)){
+        /* Fallback: old single-object format */
+        items=[{name:foodText,cal:+parsed.cal||0,prot:+parsed.prot||0,fat:+parsed.fat||0,carbs:+parsed.carbs||0,sugar:+parsed.sugar||0,source:"est"}];
+      }
+      /* JavaScript does the math - never trust AI sums */
+      const food={cal:0,prot:0,fat:0,carbs:0,sugar:0,detail:""};
+      const lines=[];
+      items.forEach(it=>{
+        const c=Math.round(+it.cal||0),p=Math.round(+it.prot||0),f=Math.round(+it.fat||0),cb=Math.round(+it.carbs||0),s=Math.round(+it.sugar||0);
+        food.cal+=c;food.prot+=p;food.fat+=f;food.carbs+=cb;food.sugar+=s;
+        const src=it.source==="db"?" 🔬":"";
+        lines.push(`• ${it.name}: ${c}cal, ${p}g P, ${f}g G, ${cb}g C, ${s}g S${src}`);
+      });
+      food.detail=lines.join("\n");
       if(food.cal>0||food.prot>0){setParsedFood(food)}else{setParsedFood(null)}
-      const srcIcon=parsed.source==="database"?"🔬 Datos de base de datos real":"📊 Estimación IA";
-      const dbNote=dbResults.length>0?`\n\n${srcIcon} (${dbResults.length} producto${dbResults.length>1?"s":""} encontrado${dbResults.length>1?"s":""} en OpenFoodFacts)`:"";
-      setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Análisis:\n${parsed.detail||"No se pudo analizar"}\n\n📊 Totales: ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S${dbNote}`}]);
+      const dbNote=dbResults.length>0?`\n\n🔬 = dato de base de datos real (OpenFoodFacts)`:"";
+      setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Desglose:\n${lines.join("\n")}\n\n✅ Totales (calculados): ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S${dbNote}`}]);
     } else {
       setParsedFood(null);
       setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
