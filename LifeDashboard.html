@@ -793,20 +793,20 @@ return(<div style={z.card}>
 </div>)};
 
 /* === AI ASSISTANT (Gemini) === */
-const GEMINI_MODELS=["gemini-2.0-flash-lite","gemini-1.5-flash","gemini-2.0-flash"];
+const GEMINI_MODELS=["gemini-2.0-flash-lite","gemini-2.0-flash"];
 const geminiURL=(model,key)=>`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 const callGemini=async(prompt,apiKey,onStatus)=>{
-  const maxRetries=2;const errors=[];
+  const maxRetries=3;const errors=[];
   for(let attempt=0;attempt<maxRetries;attempt++){
     for(const model of GEMINI_MODELS){
       try{
-        if(onStatus)onStatus(`${model}${attempt>0?` (reintento ${attempt+1})`:""}...`);
+        if(onStatus)onStatus(`${model}${attempt>0?` (intento ${attempt+1}/${maxRetries})`:""}...`);
         const res=await fetch(geminiURL(model,apiKey),{method:"POST",headers:{"Content-Type":"application/json"},
           body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2048}})});
         if(res.status===429){errors.push(`${model}: 429 cuota`);continue}
-        if(res.status===404){errors.push(`${model}: 404 no existe`);continue}
+        if(res.status===404){errors.push(`${model}: 404 no disponible`);continue}
         if(res.status===400){const e=await res.text();throw new Error(`API Key inválida. Verifica en aistudio.google.com/apikey\n(${e.slice(0,100)})`)}
-        if(res.status===403){const e=await res.text();throw new Error(`Sin permisos. Habilita "Generative Language API" en tu proyecto Google Cloud.\n(${e.slice(0,100)})`)}
+        if(res.status===403){const e=await res.text();throw new Error(`Sin permisos. Habilita "Generative Language API" en tu proyecto.\n(${e.slice(0,100)})`)}
         if(!res.ok){const e=await res.text();throw new Error(`${model} error ${res.status}: ${e.slice(0,150)}`)}
         const data=await res.json();
         const text=data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -815,24 +815,34 @@ const callGemini=async(prompt,apiKey,onStatus)=>{
       }catch(e){if(e.message.includes("API Key")||e.message.includes("Sin permisos")||e.message.includes("error "))throw e;errors.push(`${model}: ${e.message}`)}
     }
     if(attempt<maxRetries-1){
-      const wait=(attempt+1)*8;
-      if(onStatus)onStatus(`Todos los modelos fallaron, esperando ${wait}s...`);
+      const wait=15+attempt*15;/* 15s, 30s */
+      if(onStatus)onStatus(`⏳ Cuota excedida. Esperando ${wait}s antes de reintentar (${attempt+2}/${maxRetries})...`);
       await new Promise(r=>setTimeout(r,wait*1000));
     }
   }
   throw new Error(`QUOTA|${errors.join("; ")}`);
 };
 
-const testGeminiKey=async(key)=>{
+const testGeminiKey=async(key,onProgress)=>{
   const results=[];
-  for(const model of GEMINI_MODELS){
-    try{
-      const res=await fetch(geminiURL(model,key),{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:"Responde solo: OK"}]}],generationConfig:{maxOutputTokens:10}})});
-      if(res.ok){const d=await res.json();results.push(`✅ ${model}: OK`);return{ok:true,results:[...results]}}
-      else{const t=await res.text();results.push(`❌ ${model}: ${res.status} - ${t.slice(0,80)}`)}
-    }catch(e){results.push(`❌ ${model}: ${e.message.slice(0,60)}`)}
-  }
+  /* Solo probar 1 modelo para no gastar cuota */
+  const model=GEMINI_MODELS[0];
+  if(onProgress)onProgress(`Probando ${model}...`);
+  try{
+    const res=await fetch(geminiURL(model,key),{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({contents:[{parts:[{text:"Responde solo: OK"}]}],generationConfig:{maxOutputTokens:10}})});
+    if(res.ok){results.push(`✅ ${model}: OK — Tu key funciona`);return{ok:true,results}}
+    const t=await res.text();const msg=t.slice(0,120);
+    if(res.status===429){
+      results.push(`⏳ ${model}: 429 — Cuota temporal excedida`);
+      results.push(`💡 Tu key es válida pero estás en rate limit.`);
+      results.push(`Espera 1-2 minutos sin hacer requests y vuelve a intentar.`);
+      return{ok:false,rateLimit:true,results};
+    }
+    if(res.status===400)results.push(`❌ API Key inválida (400). Genera una nueva.`);
+    else if(res.status===403)results.push(`❌ Sin permisos (403). Habilita Generative Language API.`);
+    else results.push(`❌ ${model}: ${res.status} - ${msg}`);
+  }catch(e){results.push(`❌ Error de red: ${e.message.slice(0,80)}`)}
   return{ok:false,results};
 };
 
@@ -971,12 +981,11 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 <div style={{display:"flex",gap:6}}>
 <input style={{...z.inpM,fontSize:"0.7rem",flex:1}} type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)} placeholder="AIzaSy..."/>
 <button style={z.btnS(true)} onClick={()=>saveKey(keyInput)}>✓</button>
-<button style={{...z.btnS(false),fontSize:"0.6rem",whiteSpace:"nowrap"}} onClick={async()=>{setTestResult("testing");const r=await testGeminiKey(keyInput||apiKey);setTestResult(r)}}>🧪 Test</button>
+<button style={{...z.btnS(false),fontSize:"0.6rem",whiteSpace:"nowrap"}} onClick={async()=>{setTestResult("testing");const r=await testGeminiKey(keyInput||apiKey,s=>setTestResult(s));setTestResult(r)}}>🧪 Test</button>
 </div>
-{testResult==="testing"&&<div style={{fontSize:"0.6rem",color:C.cyan,marginTop:6}}>Probando conexión con cada modelo...</div>}
-{testResult&&testResult!=="testing"&&<div style={{fontSize:"0.6rem",marginTop:6,padding:8,background:C.bg3,borderRadius:6}}>
-{testResult.results.map((r,i)=><div key={i} style={{color:r.startsWith("✅")?C.green:C.red,marginBottom:2}}>{r}</div>)}
-<div style={{marginTop:4,color:C.t3}}>{testResult.ok?"✅ La API key funciona correctamente":"❌ Ningún modelo respondió. Verifica que tu key sea de aistudio.google.com/apikey"}</div>
+{testResult==="testing"||typeof testResult==="string"&&testResult!=="testing"?<div style={{fontSize:"0.6rem",color:C.cyan,marginTop:6}}>{typeof testResult==="string"?testResult:"Probando..."}</div>:null}
+{testResult&&typeof testResult==="object"&&<div style={{fontSize:"0.6rem",marginTop:6,padding:8,background:C.bg3,borderRadius:6}}>
+{testResult.results.map((r,i)=><div key={i} style={{color:r.startsWith("✅")?C.green:r.startsWith("⏳")||r.startsWith("💡")?C.orange:r.startsWith("Espera")?C.t2:C.red,marginBottom:3}}>{r}</div>)}
 </div>}
 </div>}
 
