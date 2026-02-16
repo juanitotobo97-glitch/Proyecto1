@@ -956,19 +956,47 @@ const analyzeFood=async(retryInput)=>{
   setLastAction({type:"food",input:foodText});
   if(!retryInput)setMsgs(prev=>[...prev,{role:"user",text:foodText}]);
   try{
-    const prompt=`Eres un nutricionista experto especializado en comida latinoamericana y colombiana. El usuario te describe qué comió. Tu trabajo es estimar los macronutrientes.
+    const prompt=`Eres un nutricionista experto. Tu trabajo es calcular macronutrientes con PRECISIÓN REAL basándote en tablas nutricionales reales.
 
-REGLAS:
-1. Usa referencias de marcas colombianas cuando aplique (Alpina, Alquería, Ramo, Zenú, Colanta, Nutresa, Tosh, etc.)
-2. Para comida típica colombiana usa porciones estándar de restaurante colombiano
-3. Si no menciona cantidad, asume una porción normal/mediana
-4. Si describe varias comidas, suma TODOS los macros
-5. Sé lo más preciso posible con las calorías
+TABLA DE REFERENCIA (por 100g de alimento crudo/seco):
+- Avena en hojuelas: 389cal, 13.2g prot, 6.5g grasa, 66g carbs
+- Arroz blanco cocido: 130cal, 2.7g prot, 0.3g grasa, 28g carbs
+- Arroz blanco crudo: 360cal, 7g prot, 0.6g grasa, 79g carbs
+- Pechuga de pollo: 165cal, 31g prot, 3.6g grasa, 0g carbs
+- Huevo entero (50g): 72cal, 6.3g prot, 4.8g grasa, 0.4g carbs
+- Clara de huevo (33g): 17cal, 3.6g prot, 0.1g grasa, 0.2g carbs
+- Banano (120g): 105cal, 1.3g prot, 0.4g grasa, 27g carbs
+- Pan blanco: 265cal, 9g prot, 3.2g grasa, 49g carbs
+- Pasta cocida: 158cal, 5.8g prot, 0.9g grasa, 31g carbs
+- Pasta cruda: 371cal, 13g prot, 1.5g grasa, 75g carbs
+- Leche entera: 61cal, 3.2g prot, 3.3g grasa, 4.8g carbs
+- Carne res molida: 250cal, 26g prot, 15g grasa, 0g carbs
+- Atún en lata (drenado): 116cal, 25.5g prot, 0.8g grasa, 0g carbs
+- Frijol cocido: 127cal, 8.7g prot, 0.5g grasa, 22g carbs
+- Aguacate: 160cal, 2g prot, 15g grasa, 9g carbs
+- Papa cocida: 87cal, 1.9g prot, 0.1g grasa, 20g carbs
+- Plátano maduro frito: 265cal, 1.2g prot, 11g grasa, 42g carbs
+- Arepa de maíz (100g): 200cal, 4g prot, 2g grasa, 43g carbs
+- Lentejas cocidas: 116cal, 9g prot, 0.4g grasa, 20g carbs
+- Aceite/mantequilla (1 cda 14g): 120cal, 0g prot, 14g grasa, 0g carbs
+- Whey protein (1 scoop 30g): 120cal, 24g prot, 1.5g grasa, 3g carbs
+- Almendras: 579cal, 21g prot, 50g grasa, 22g carbs
+- Queso mozzarella: 280cal, 28g prot, 17g grasa, 3g carbs
+
+REGLAS CRÍTICAS:
+1. CALCULA proporcionalmente: si el usuario dice "60g de avena", calcula 60/100 * valores_por_100g. Ejemplo: 60g avena = 233cal, 7.9g prot, 3.9g grasa, 39.6g carbs
+2. Usa la tabla de arriba como referencia principal. Para alimentos no listados, usa valores nutricionales reales estándar (USDA/INCAP)
+3. VERIFICACIÓN OBLIGATORIA: las calorías deben ser aproximadamente = (prot × 4) + (grasa × 9) + (carbs × 4). Si no cuadra, RECALCULA
+4. Para marcas colombianas (Alpina, Alquería, Ramo, Zenú, Colanta, Nutresa, Tosh) usa valores reales del empaque
+5. Para comida típica colombiana usa porciones estándar de restaurante
+6. Si no menciona cantidad, asume porción normal/mediana
+7. Si describe varias comidas, suma TODOS los macros
+8. Redondea a enteros
 
 La comida que el usuario describió es: "${foodText}"
 
-Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional antes ni después, en este formato exacto:
-{"cal":250,"prot":20,"fat":10,"carbs":30,"sugar":5,"detail":"descripción de cada alimento con sus macros"}
+Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional antes ni después:
+{"cal":250,"prot":20,"fat":10,"carbs":30,"sugar":5,"detail":"desglose de cada alimento con gramos y macros"}
 
 ${buildContext()}`;
     const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
