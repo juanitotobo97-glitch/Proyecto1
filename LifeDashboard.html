@@ -793,27 +793,35 @@ return(<div style={z.card}>
 </div>)};
 
 /* === AI ASSISTANT (Gemini) === */
-const GEMINI_MODELS=["gemini-1.5-flash","gemini-2.0-flash-lite","gemini-2.0-flash"];
-const callGemini=async(prompt,apiKey,retries=3)=>{
-  for(let attempt=0;attempt<retries;attempt++){
-    for(const model of GEMINI_MODELS){
+const GEMINI_MODELS=["gemini-2.0-flash-lite","gemini-1.5-flash","gemini-2.0-flash"];
+const callGemini=async(prompt,apiKey,onStatus)=>{
+  const maxRetries=3;
+  for(let attempt=0;attempt<maxRetries;attempt++){
+    for(let mi=0;mi<GEMINI_MODELS.length;mi++){
+      const model=GEMINI_MODELS[mi];
       try{
+        if(onStatus)onStatus(`Intentando ${model}${attempt>0?` (intento ${attempt+1})`:""}...`);
         const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
           body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2048}})});
         if(res.status===429){
-          if(attempt<retries-1){await new Promise(r=>setTimeout(r,(attempt+1)*2000));break}
+          if(mi===GEMINI_MODELS.length-1&&attempt<maxRetries-1){
+            const wait=(attempt+1)*5;
+            if(onStatus)onStatus(`Cuota excedida, esperando ${wait}s...`);
+            await new Promise(r=>setTimeout(r,wait*1000));
+          }
           continue;
         }
-        if(res.status===404)continue;/* model not available, try next */
-        if(!res.ok){const e=await res.text();throw new Error(`Error ${res.status}: ${e.slice(0,150)}`)}
+        if(res.status===404)continue;
+        if(res.status===403){const e=await res.text();throw new Error("API Key inválida o sin permisos. Verifica tu key en aistudio.google.com/apikey")}
+        if(!res.ok){const e=await res.text();throw new Error(`Error ${res.status}: ${e.slice(0,200)}`)}
         const data=await res.json();
         const text=data.candidates?.[0]?.content?.parts?.[0]?.text;
         if(text)return text;
-      }catch(e){if(e.message.includes("Error "))throw e}
+      }catch(e){if(e.message.startsWith("API Key")||e.message.startsWith("Error "))throw e}
     }
   }
-  throw new Error("Cuota excedida. Espera 1 minuto e intenta de nuevo (free tier: 15 req/min).");
+  throw new Error("QUOTA_EXCEEDED");
 };
 
 const AIAssistant=()=>{
@@ -821,10 +829,12 @@ const[open,setOpen]=useState(false);
 const[mode,setMode]=useState("food");/* food | chat | prompt */
 const[input,setInput]=useState("");
 const[loading,setLoading]=useState(false);
+const[loadStatus,setLoadStatus]=useState("");
 const[msgs,setMsgs]=useState([]);
 const[parsedFood,setParsedFood]=useState(null);
 const[keyInput,setKeyInput]=useState(S.geminiApiKey||"");
 const[showKey,setShowKey]=useState(!S.geminiApiKey);
+const[lastAction,setLastAction]=useState(null);/* {type:"food"|"chat",input:string} for retry */
 const chatRef=useRef(null);
 
 const saveKey=(k)=>{sv({...D,settings:{...S,geminiApiKey:k}});setShowKey(false)};
@@ -848,9 +858,12 @@ const buildContext=()=>{
 - Promedio reciente: Cal:${avg(last7.filter(e=>+e.cal>0),"cal")} Prot:${avg(last7.filter(e=>+e.prot>0),"prot")}g Grasa:${avg(last7.filter(e=>+e.fat>0),"fat")}g Carbos:${avg(last7.filter(e=>+e.carbs>0),"carbs")}g${customPrompt}`;
 };
 
-const analyzeFood=async()=>{
-  if(!input.trim()||!apiKey)return;
-  setLoading(true);setParsedFood(null);
+const analyzeFood=async(retryInput)=>{
+  const foodText=retryInput||input.trim();
+  if(!foodText||!apiKey)return;
+  setLoading(true);setParsedFood(null);setLoadStatus("");
+  setLastAction({type:"food",input:foodText});
+  if(!retryInput)setMsgs(prev=>[...prev,{role:"user",text:foodText}]);
   try{
     const prompt=`Eres un nutricionista experto. El usuario te dice qué comió. Analiza la comida y estima los macronutrientes TOTALES del día o de la comida descrita.
 
@@ -862,18 +875,21 @@ Sé preciso con las porciones. Si no menciona cantidad, asume porciones normales
 
 ${buildContext()}
 
-COMIDA: ${input.trim()}`;
-    const resp=await callGemini(prompt,apiKey);
+COMIDA: ${foodText}`;
+    const resp=await callGemini(prompt,apiKey,s=>setLoadStatus(s));
     const jsonMatch=resp.match(/\{[\s\S]*\}/);
     if(jsonMatch){
       const parsed=JSON.parse(jsonMatch[0]);
       setParsedFood({cal:Math.round(+parsed.cal||0),prot:Math.round(+parsed.prot||0),fat:Math.round(+parsed.fat||0),carbs:Math.round(+parsed.carbs||0),sugar:Math.round(+parsed.sugar||0),detail:parsed.detail||""});
-      setMsgs(prev=>[...prev,{role:"user",text:input},{role:"ai",text:`🍽️ Análisis:\n${parsed.detail}\n\n📊 Totales: ${parsed.cal} kcal | ${parsed.prot}g P | ${parsed.fat}g G | ${parsed.carbs}g C | ${parsed.sugar}g S`}]);
+      setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Análisis:\n${parsed.detail}\n\n📊 Totales: ${parsed.cal} kcal | ${parsed.prot}g P | ${parsed.fat}g G | ${parsed.carbs}g C | ${parsed.sugar}g S`}]);
     } else {
-      setMsgs(prev=>[...prev,{role:"user",text:input},{role:"ai",text:resp}]);
+      setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
     }
-  }catch(e){setMsgs(prev=>[...prev,{role:"ai",text:"❌ Error: "+e.message}])}
-  setLoading(false);setInput("");
+  }catch(e){
+    if(e.message==="QUOTA_EXCEEDED")setMsgs(prev=>[...prev,{role:"ai",text:"⏳ Cuota excedida. El free tier permite 15 requests/min. Presiona 🔄 para reintentar.",retry:true}]);
+    else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
+  }
+  setLoading(false);setInput("");setLoadStatus("");
 };
 
 const addFoodToLog=()=>{
@@ -889,11 +905,12 @@ const addFoodToLog=()=>{
   setParsedFood(null);
 };
 
-const askChat=async()=>{
-  if(!input.trim()||!apiKey)return;
-  setLoading(true);
-  const userMsg=input.trim();setInput("");
-  setMsgs(prev=>[...prev,{role:"user",text:userMsg}]);
+const askChat=async(retryInput)=>{
+  const userMsg=retryInput||input.trim();
+  if(!userMsg||!apiKey)return;
+  setLoading(true);setLoadStatus("");
+  setLastAction({type:"chat",input:userMsg});
+  if(!retryInput){setInput("");setMsgs(prev=>[...prev,{role:"user",text:userMsg}])}
   try{
     const history=msgs.slice(-6).map(m=>`${m.role==="user"?"USUARIO":"ASISTENTE"}: ${m.text}`).join("\n");
     const prompt=`Eres un coach de fitness y nutrición experto. Responde en español, de forma concisa y útil. Usa emojis moderadamente.
@@ -904,11 +921,16 @@ ${history?`HISTORIAL:\n${history}\n`:""}
 USUARIO: ${userMsg}
 
 Responde de forma directa y personalizada basándote en los datos del usuario.`;
-    const resp=await callGemini(prompt,apiKey);
+    const resp=await callGemini(prompt,apiKey,s=>setLoadStatus(s));
     setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
-  }catch(e){setMsgs(prev=>[...prev,{role:"ai",text:"❌ Error: "+e.message}])}
-  setLoading(false);
+  }catch(e){
+    if(e.message==="QUOTA_EXCEEDED")setMsgs(prev=>[...prev,{role:"ai",text:"⏳ Cuota excedida. El free tier permite 15 requests/min. Presiona 🔄 para reintentar.",retry:true}]);
+    else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
+  }
+  setLoading(false);setLoadStatus("");
 };
+
+const retry=()=>{if(!lastAction)return;if(lastAction.type==="food")analyzeFood(lastAction.input);else askChat(lastAction.input)};
 
 useEffect(()=>{if(chatRef.current)chatRef.current.scrollTop=chatRef.current.scrollHeight},[msgs]);
 
@@ -958,10 +980,13 @@ placeholder={"Ejemplo:\n- Tengo 24 años, hombre, 1.75m\n- Mi objetivo es bajar 
 {msgs.length===0&&<div style={{textAlign:"center",padding:"30px 10px",color:C.t3,fontSize:"0.75rem"}}>
 {mode==="food"?"🍽️ Escribe lo que comiste y te calculo los macros automáticamente.\n\nEjemplo: \"200g de pollo a la plancha con arroz y ensalada\"":"💬 Pregúntame sobre tu progreso, qué comer, recomendaciones, etc."}
 </div>}
-{msgs.map((m,i)=>(<div key={i} style={{alignSelf:m.role==="user"?"flex-end":"flex-start",maxWidth:"85%",padding:"8px 12px",borderRadius:m.role==="user"?"12px 12px 4px 12px":"12px 12px 12px 4px",background:m.role==="user"?C.purple+"25":C.bg3,border:`1px solid ${m.role==="user"?C.purple+"40":C.b1}`,fontSize:"0.76rem",color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.5}}>
+{msgs.map((m,i)=>(<div key={i} style={{alignSelf:m.role==="user"?"flex-end":"flex-start",maxWidth:"85%"}}>
+<div style={{padding:"8px 12px",borderRadius:m.role==="user"?"12px 12px 4px 12px":"12px 12px 12px 4px",background:m.role==="user"?C.purple+"25":m.retry?C.orange+"15":C.bg3,border:`1px solid ${m.role==="user"?C.purple+"40":m.retry?C.orange+"40":C.b1}`,fontSize:"0.76rem",color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.5}}>
 {m.text}
+</div>
+{m.retry&&!loading&&<button style={{...z.btnS(false),marginTop:4,fontSize:"0.65rem",color:C.cyan}} onClick={retry}>🔄 Reintentar</button>}
 </div>))}
-{loading&&<div style={{alignSelf:"flex-start",padding:"8px 12px",borderRadius:12,background:C.bg3,fontSize:"0.76rem",color:C.t3,animation:"pulse 1s infinite"}}>{mode==="food"?"🔍 Analizando comida...":"🤔 Pensando..."}</div>}
+{loading&&<div style={{alignSelf:"flex-start",padding:"8px 12px",borderRadius:12,background:C.bg3,fontSize:"0.76rem",color:C.t3,animation:"pulse 1s infinite"}}>{loadStatus||( mode==="food"?"🔍 Analizando comida...":"🤔 Pensando...")}</div>}
 {parsedFood&&<div style={{padding:"10px",background:C.green+"15",border:`1px solid ${C.green}30`,borderRadius:10}}>
 <div style={{fontSize:"0.68rem",fontWeight:600,color:C.green,marginBottom:6}}>📊 Macros detectados:</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4,marginBottom:8}}>
