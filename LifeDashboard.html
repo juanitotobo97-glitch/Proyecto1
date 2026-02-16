@@ -956,24 +956,30 @@ const analyzeFood=async(retryInput)=>{
   setLastAction({type:"food",input:foodText});
   if(!retryInput)setMsgs(prev=>[...prev,{role:"user",text:foodText}]);
   try{
-    const prompt=`Eres un nutricionista experto. El usuario te dice qué comió. Analiza la comida y estima los macronutrientes TOTALES del día o de la comida descrita.
+    const prompt=`Eres un nutricionista experto especializado en comida latinoamericana y colombiana. El usuario te describe qué comió. Tu trabajo es estimar los macronutrientes.
 
-IMPORTANTE: Responde SIEMPRE en este formato JSON exacto (solo el JSON, sin texto extra):
-{"cal":number,"prot":number,"fat":number,"carbs":number,"sugar":number,"detail":"descripción breve de cada alimento y sus macros estimados"}
+REGLAS:
+1. Usa referencias de marcas colombianas cuando aplique (Alpina, Alquería, Ramo, Zenú, Colanta, Nutresa, Tosh, etc.)
+2. Para comida típica colombiana usa porciones estándar de restaurante colombiano
+3. Si no menciona cantidad, asume una porción normal/mediana
+4. Si describe varias comidas, suma TODOS los macros
+5. Sé lo más preciso posible con las calorías
 
-Si el usuario describe varias comidas o todo lo del día, suma todo.
-Sé preciso con las porciones. Si no menciona cantidad, asume porciones normales.
+La comida que el usuario describió es: "${foodText}"
 
-${buildContext()}
+Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional antes ni después, en este formato exacto:
+{"cal":250,"prot":20,"fat":10,"carbs":30,"sugar":5,"detail":"descripción de cada alimento con sus macros"}
 
-COMIDA: ${foodText}`;
+${buildContext()}`;
     const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
     const jsonMatch=resp.match(/\{[\s\S]*\}/);
     if(jsonMatch){
       const parsed=JSON.parse(jsonMatch[0]);
-      setParsedFood({cal:Math.round(+parsed.cal||0),prot:Math.round(+parsed.prot||0),fat:Math.round(+parsed.fat||0),carbs:Math.round(+parsed.carbs||0),sugar:Math.round(+parsed.sugar||0),detail:parsed.detail||""});
-      setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Análisis:\n${parsed.detail}\n\n📊 Totales: ${parsed.cal} kcal | ${parsed.prot}g P | ${parsed.fat}g G | ${parsed.carbs}g C | ${parsed.sugar}g S`}]);
+      const food={cal:Math.round(+parsed.cal||0),prot:Math.round(+parsed.prot||0),fat:Math.round(+parsed.fat||0),carbs:Math.round(+parsed.carbs||0),sugar:Math.round(+parsed.sugar||0),detail:parsed.detail||""};
+      if(food.cal>0||food.prot>0){setParsedFood(food)}else{setParsedFood(null)}
+      setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Análisis:\n${parsed.detail||"No se pudo analizar"}\n\n📊 Totales: ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S`}]);
     } else {
+      setParsedFood(null);
       setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
     }
   }catch(e){
@@ -1076,7 +1082,7 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 {/* Mode tabs */}
 <div style={{display:"flex",borderBottom:`1px solid ${C.b1}`}}>
 {[["food","🍽️ Comida"],["chat","💬 Consultar"],["prompt","📝 Mi Contexto"]].map(([m,l])=>(
-<button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"8px",background:mode===m?C.bg3:"transparent",border:"none",borderBottom:mode===m?`2px solid ${C.purple}`:"2px solid transparent",color:mode===m?C.t0:C.t3,fontSize:"0.68rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+<button key={m} onClick={()=>{setMode(m);setParsedFood(null)}} style={{flex:1,padding:"8px",background:mode===m?C.bg3:"transparent",border:"none",borderBottom:mode===m?`2px solid ${C.purple}`:"2px solid transparent",color:mode===m?C.t0:C.t3,fontSize:"0.68rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
 ))}
 </div>
 
