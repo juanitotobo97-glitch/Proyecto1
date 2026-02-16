@@ -98,7 +98,7 @@ const DEF_GOALS=[
 {id:"bulk",name:"Bulking",cal:3000,prot:180,fat:80,carbs:350,sugar:50,trainingPerWeek:5},
 {id:"mantenimiento",name:"Mantenimiento",cal:2500,prot:170,fat:70,carbs:280,sugar:45,trainingPerWeek:4},
 {id:"personalizado",name:"Personalizado",cal:2250,prot:170,fat:65,carbs:220,sugar:40,trainingPerWeek:5}];
-const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],goalProfiles:DEF_GOALS,activeGoalProfile:"cut",geminiApiKey:"",aiPrompt:""};
+const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],goalProfiles:DEF_GOALS,activeGoalProfile:"cut",geminiApiKey:"",groqApiKey:"",aiProvider:"gemini",aiPrompt:""};
 
 const DEF_HAB=[
 {id:"h1",name:"Gym / Pesas",emoji:"💪",meta:"5x/semana",active:true},
@@ -792,7 +792,7 @@ return(<div style={z.card}>
 </div>
 </div>)};
 
-/* === AI ASSISTANT (Gemini) === */
+/* === AI ASSISTANT (Gemini + Groq) === */
 const GEMINI_ENDPOINTS=[
   {model:"gemini-2.0-flash-lite",ver:"v1beta"},
   {model:"gemini-2.0-flash",ver:"v1beta"},
@@ -834,9 +834,37 @@ const callGemini=async(prompt,apiKey,onStatus)=>{
   throw new Error(`QUOTA|${errors.join("; ")}`);
 };
 
+const GROQ_MODELS=["llama-3.3-70b-versatile","llama-3.1-8b-instant"];
+const callGroq=async(prompt,apiKey,onStatus)=>{
+  const errors=[];
+  for(const model of GROQ_MODELS){
+    try{
+      if(onStatus)onStatus(`Groq: ${model}...`);
+      const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
+        body:JSON.stringify({model,messages:[{role:"user",content:prompt}],temperature:0.3,max_tokens:2048})});
+      if(res.status===401)throw new Error("KEY_INVALID");
+      if(res.status===429){errors.push(`${model}: 429`);continue}
+      if(!res.ok){errors.push(`${model}: ${res.status}`);continue}
+      const data=await res.json();
+      const text=data.choices?.[0]?.message?.content;
+      if(text)return text;
+      errors.push(`${model}: vacío`);
+    }catch(e){
+      if(e.message==="KEY_INVALID")throw new Error("KEY_INVALID");
+      errors.push(`${model}: ${e.message.slice(0,40)}`);
+    }
+  }
+  throw new Error(`QUOTA|${errors.join("; ")}`);
+};
+
+const callAI=async(prompt,provider,apiKey,onStatus)=>{
+  if(provider==="groq")return callGroq(prompt,apiKey,onStatus);
+  return callGemini(prompt,apiKey,onStatus);
+};
+
 const testGeminiKey=async(key,onProgress)=>{
   const results=[];
-  /* Probar solo 1 endpoint para no gastar cuota */
   const ep=GEMINI_ENDPOINTS[0];
   const label=`${ep.model} (${ep.ver})`;
   if(onProgress)onProgress(`Probando ${label}...`);
@@ -863,6 +891,26 @@ const testGeminiKey=async(key,onProgress)=>{
   return{ok:false,results};
 };
 
+const testGroqKey=async(key,onProgress)=>{
+  const results=[];
+  if(onProgress)onProgress("Probando Groq API...");
+  try{
+    const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
+      body:JSON.stringify({model:"llama-3.3-70b-versatile",messages:[{role:"user",content:"Responde solo: OK"}],max_tokens:10})});
+    if(res.ok){results.push("✅ Funciona correctamente");return{ok:true,results}}
+    if(res.status===401){results.push("❌ API Key inválida. Revisa tu key en console.groq.com")}
+    else if(res.status===429){results.push("⏳ Rate limit activo. Espera unos segundos.");return{ok:false,rateLimit:true,results}}
+    else{const t=await res.text();results.push(`❌ Error ${res.status}: ${t.slice(0,100)}`)}
+  }catch(e){results.push(`❌ Error de red: ${e.message.slice(0,80)}`)}
+  return{ok:false,results};
+};
+
+const testAIKey=async(provider,key,onProgress)=>{
+  if(provider==="groq")return testGroqKey(key,onProgress);
+  return testGeminiKey(key,onProgress);
+};
+
 const AIAssistant=()=>{
 const[open,setOpen]=useState(false);
 const[mode,setMode]=useState("food");/* food | chat | prompt */
@@ -871,14 +919,17 @@ const[loading,setLoading]=useState(false);
 const[loadStatus,setLoadStatus]=useState("");
 const[msgs,setMsgs]=useState([]);
 const[parsedFood,setParsedFood]=useState(null);
-const[keyInput,setKeyInput]=useState(S.geminiApiKey||"");
-const[showKey,setShowKey]=useState(!S.geminiApiKey);
+const provider=S.aiProvider||"gemini";
+const curKey=provider==="groq"?(S.groqApiKey||""):(S.geminiApiKey||"");
+const[keyInput,setKeyInput]=useState(curKey);
+const[showKey,setShowKey]=useState(!curKey);
 const[lastAction,setLastAction]=useState(null);/* {type:"food"|"chat",input:string} for retry */
 const[testResult,setTestResult]=useState(null);/* null | "testing" | {ok,results} */
 const chatRef=useRef(null);
 
-const saveKey=(k)=>{sv({...D,settings:{...S,geminiApiKey:k}});setShowKey(false)};
-const apiKey=S.geminiApiKey||"";
+const setProvider=(p)=>{sv({...D,settings:{...S,aiProvider:p}});setKeyInput(p==="groq"?(S.groqApiKey||""):(S.geminiApiKey||""));setTestResult(null)};
+const saveKey=(k)=>{const key=provider==="groq"?"groqApiKey":"geminiApiKey";sv({...D,settings:{...S,[key]:k}});setShowKey(false)};
+const apiKey=curKey;
 
 const buildContext=()=>{
   const last7=fl.slice(-7);
@@ -916,7 +967,7 @@ Sé preciso con las porciones. Si no menciona cantidad, asume porciones normales
 ${buildContext()}
 
 COMIDA: ${foodText}`;
-    const resp=await callGemini(prompt,apiKey,s=>setLoadStatus(s));
+    const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
     const jsonMatch=resp.match(/\{[\s\S]*\}/);
     if(jsonMatch){
       const parsed=JSON.parse(jsonMatch[0]);
@@ -927,11 +978,13 @@ COMIDA: ${foodText}`;
     }
   }catch(e){
     if(e.message.startsWith("QUOTA|")){
-      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Rate limit de Google (429)\n\nTu API key probablemente es válida pero se agotó la cuota temporal.\n\nSoluciones:\n1. Espera 2-3 minutos y presiona 🔄\n2. Si persiste: genera una KEY NUEVA en aistudio.google.com/apikey\n3. Revisa tu cuota en console.cloud.google.com`,retry:true}]);
+      const isGroq=provider==="groq";
+      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`⏳ Rate limit de Groq\n\nEspera unos segundos y presiona 🔄`:`⏳ Rate limit de Google (429)\n\nSoluciones:\n1. Espera 2-3 min y presiona 🔄\n2. Si persiste: genera KEY NUEVA en aistudio.google.com/apikey\n3. O cambia a Groq (gratis, sin restricciones regionales)`,retry:true}]);
     }else if(e.message==="KEY_INVALID"){
-      setMsgs(prev=>[...prev,{role:"ai",text:`❌ API Key inválida\n\nVe a aistudio.google.com/apikey y genera una nueva.`}]);
+      const isGroq=provider==="groq";
+      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`❌ API Key de Groq inválida\n\nRevisa tu key en console.groq.com`:`❌ API Key inválida\n\nVe a aistudio.google.com/apikey y genera una nueva.`}]);
     }else if(e.message==="NO_PERMS"){
-      setMsgs(prev=>[...prev,{role:"ai",text:`❌ Sin permisos (403)\n\nHabilita "Generative Language API" en tu proyecto de Google Cloud.`}]);
+      setMsgs(prev=>[...prev,{role:"ai",text:`❌ Sin permisos (403)\n\nHabilita "Generative Language API" en tu proyecto de Google Cloud.\nO cambia a Groq que no tiene esta restricción.`}]);
     }else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
   }
   setLoading(false);setInput("");setLoadStatus("");
@@ -966,15 +1019,17 @@ ${history?`HISTORIAL:\n${history}\n`:""}
 USUARIO: ${userMsg}
 
 Responde de forma directa y personalizada basándote en los datos del usuario.`;
-    const resp=await callGemini(prompt,apiKey,s=>setLoadStatus(s));
+    const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
     setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
   }catch(e){
     if(e.message.startsWith("QUOTA|")){
-      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Rate limit de Google (429)\n\nEspera 2-3 minutos y presiona 🔄\nSi persiste: genera una KEY NUEVA en aistudio.google.com/apikey`,retry:true}]);
+      const isGroq=provider==="groq";
+      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`⏳ Rate limit de Groq. Espera unos segundos y presiona 🔄`:`⏳ Rate limit de Google (429)\n\nEspera 2-3 min y presiona 🔄\nO cambia a Groq (sin restricciones regionales)`,retry:true}]);
     }else if(e.message==="KEY_INVALID"){
-      setMsgs(prev=>[...prev,{role:"ai",text:`❌ API Key inválida. Genera una nueva en aistudio.google.com/apikey`}]);
+      const isGroq=provider==="groq";
+      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`❌ API Key de Groq inválida. Revisa en console.groq.com`:`❌ API Key inválida. Genera una nueva en aistudio.google.com/apikey`}]);
     }else if(e.message==="NO_PERMS"){
-      setMsgs(prev=>[...prev,{role:"ai",text:`❌ Sin permisos. Habilita "Generative Language API" en Google Cloud.`}]);
+      setMsgs(prev=>[...prev,{role:"ai",text:`❌ Sin permisos. Habilita "Generative Language API" en Google Cloud.\nO cambia a Groq.`}]);
     }else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
   }
   setLoading(false);setLoadStatus("");
@@ -992,7 +1047,7 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 <span style={{fontSize:"1.2rem"}}>🤖</span>
 <div style={{flex:1}}>
 <div style={{fontSize:"0.82rem",fontWeight:700}}>AI Coach</div>
-<div style={{fontSize:"0.55rem",color:C.t3}}>Gemini (15 req/min gratis) · {mode==="food"?"Analizar comida":"Consulta libre"}</div>
+<div style={{fontSize:"0.55rem",color:C.t3}}>{provider==="groq"?"Groq / Llama 3 (gratis)":"Gemini (15 req/min)"} · {mode==="food"?"Analizar comida":"Consulta libre"}</div>
 </div>
 <button onClick={()=>setShowKey(!showKey)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"0.7rem"}}>🔑</button>
 <button onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"1rem"}}>✕</button>
@@ -1000,11 +1055,17 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 
 {/* API Key config */}
 {showKey&&<div style={{padding:"10px 14px",background:C.bg2,borderBottom:`1px solid ${C.b1}`}}>
-<div style={{fontSize:"0.65rem",color:C.t2,marginBottom:6}}>API Key de Google Gemini (<a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>obtener gratis aquí</a>)</div>
+<div style={{display:"flex",gap:4,marginBottom:8}}>
+{[["gemini","Gemini"],["groq","Groq (Recomendado)"]].map(([p,l])=>(
+<button key={p} onClick={()=>setProvider(p)} style={{flex:1,padding:"5px 8px",borderRadius:8,border:`1px solid ${provider===p?C.purple:C.b1}`,background:provider===p?C.purple+"25":"transparent",color:provider===p?C.t0:C.t3,fontSize:"0.62rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+))}
+</div>
+{provider==="groq"?<div style={{fontSize:"0.65rem",color:C.t2,marginBottom:6}}>API Key de Groq (<a href="https://console.groq.com/keys" target="_blank" style={{color:C.cyan}}>obtener gratis aquí</a>) — Sin restricciones regionales</div>
+:<div style={{fontSize:"0.65rem",color:C.t2,marginBottom:6}}>API Key de Google Gemini (<a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>obtener gratis aquí</a>)</div>}
 <div style={{display:"flex",gap:6}}>
-<input style={{...z.inpM,fontSize:"0.7rem",flex:1}} type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)} placeholder="AIzaSy..."/>
+<input style={{...z.inpM,fontSize:"0.7rem",flex:1}} type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)} placeholder={provider==="groq"?"gsk_...":"AIzaSy..."}/>
 <button style={z.btnS(true)} onClick={()=>saveKey(keyInput)}>✓</button>
-<button style={{...z.btnS(false),fontSize:"0.6rem",whiteSpace:"nowrap"}} onClick={async()=>{setTestResult("testing");const r=await testGeminiKey(keyInput||apiKey,s=>setTestResult(s));setTestResult(r)}}>🧪 Test</button>
+<button style={{...z.btnS(false),fontSize:"0.6rem",whiteSpace:"nowrap"}} onClick={async()=>{setTestResult("testing");const r=await testAIKey(provider,keyInput||apiKey,s=>setTestResult(s));setTestResult(r)}}>🧪 Test</button>
 </div>
 {testResult==="testing"||typeof testResult==="string"&&testResult!=="testing"?<div style={{fontSize:"0.6rem",color:C.cyan,marginTop:6}}>{typeof testResult==="string"?testResult:"Probando..."}</div>:null}
 {testResult&&typeof testResult==="object"&&<div style={{fontSize:"0.6rem",marginTop:6,padding:8,background:C.bg3,borderRadius:6}}>
@@ -1055,7 +1116,7 @@ placeholder={"Ejemplo:\n- Tengo 24 años, hombre, 1.75m\n- Mi objetivo es bajar 
 
 {/* Input */}
 {mode!=="prompt"&&<div style={{padding:"10px 14px",borderTop:`1px solid ${C.b1}`,background:C.bg2}}>
-{!apiKey?<div style={{fontSize:"0.7rem",color:C.orange,textAlign:"center",padding:6}}>🔑 Configura tu API Key de Gemini arriba para empezar</div>:
+{!apiKey?<div style={{fontSize:"0.7rem",color:C.orange,textAlign:"center",padding:6}}>🔑 Configura tu API Key de {provider==="groq"?"Groq":"Gemini"} arriba para empezar</div>:
 <div style={{display:"flex",gap:6}}>
 <input style={{...z.inp,flex:1,fontSize:"0.78rem",padding:"8px 12px"}} value={input} onChange={e=>setInput(e.target.value)}
   placeholder={mode==="food"?"¿Qué comiste? Ej: pollo con arroz...":"Pregúntale al coach..."}
@@ -1077,12 +1138,28 @@ return(<Mdl title="⚙ Configuración" onClose={onClose} ch={<div style={{displa
 <input style={{...z.inp,maxWidth:200}} value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})}/>}</div>))}
 <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>Fecha inicio</span><input style={{...z.inpM,maxWidth:155}} type="date" value={f.startDate} onChange={e=>setF({...f,startDate:e.target.value})}/></div>
 <div style={{borderTop:`1px solid ${C.b1}`,marginTop:10,paddingTop:10}}>
-<div style={{fontSize:"0.65rem",fontWeight:600,color:C.purple,marginBottom:6}}>🤖 AI Coach (Google Gemini)</div>
+<div style={{fontSize:"0.65rem",fontWeight:600,color:C.purple,marginBottom:6}}>🤖 AI Coach</div>
+<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+<span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>Proveedor</span>
+<div style={{display:"flex",gap:4}}>
+{[["gemini","Gemini"],["groq","Groq"]].map(([p,l])=>(
+<button key={p} onClick={()=>setF({...f,aiProvider:p})} style={{padding:"4px 12px",borderRadius:6,border:`1px solid ${(f.aiProvider||"gemini")===p?C.purple:C.b1}`,background:(f.aiProvider||"gemini")===p?C.purple+"25":"transparent",color:(f.aiProvider||"gemini")===p?C.t0:C.t3,fontSize:"0.7rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+))}
+</div>
+</div>
+{(f.aiProvider||"gemini")==="gemini"?<div>
 <div style={{display:"flex",alignItems:"center",gap:10}}>
-<span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>API Key</span>
+<span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>Gemini API Key</span>
 <input style={{...z.inpM,maxWidth:200}} type="password" value={f.geminiApiKey||""} onChange={e=>setF({...f,geminiApiKey:e.target.value})} placeholder="AIzaSy..."/>
 </div>
 <div style={{fontSize:"0.58rem",color:C.t3,marginTop:4}}>Obtén tu key gratis en <a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>aistudio.google.com/apikey</a></div>
+</div>:<div>
+<div style={{display:"flex",alignItems:"center",gap:10}}>
+<span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>Groq API Key</span>
+<input style={{...z.inpM,maxWidth:200}} type="password" value={f.groqApiKey||""} onChange={e=>setF({...f,groqApiKey:e.target.value})} placeholder="gsk_..."/>
+</div>
+<div style={{fontSize:"0.58rem",color:C.t3,marginTop:4}}>Obtén tu key gratis en <a href="https://console.groq.com/keys" target="_blank" style={{color:C.cyan}}>console.groq.com/keys</a> — Sin restricciones regionales</div>
+</div>}
 <div style={{marginTop:10}}>
 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
 <span style={{fontSize:"0.8rem",color:C.t2}}>Prompt personalizado</span>
