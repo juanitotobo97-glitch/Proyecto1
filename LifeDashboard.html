@@ -98,7 +98,7 @@ const DEF_GOALS=[
 {id:"bulk",name:"Bulking",cal:3000,prot:180,fat:80,carbs:350,sugar:50,trainingPerWeek:5},
 {id:"mantenimiento",name:"Mantenimiento",cal:2500,prot:170,fat:70,carbs:280,sugar:45,trainingPerWeek:4},
 {id:"personalizado",name:"Personalizado",cal:2250,prot:170,fat:65,carbs:220,sugar:40,trainingPerWeek:5}];
-const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],goalProfiles:DEF_GOALS,activeGoalProfile:"cut",geminiApiKey:""};
+const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],goalProfiles:DEF_GOALS,activeGoalProfile:"cut",geminiApiKey:"",aiPrompt:""};
 
 const DEF_HAB=[
 {id:"h1",name:"Gym / Pesas",emoji:"💪",meta:"5x/semana",active:true},
@@ -818,7 +818,7 @@ const callGemini=async(prompt,apiKey,retries=3)=>{
 
 const AIAssistant=()=>{
 const[open,setOpen]=useState(false);
-const[mode,setMode]=useState("food");/* food | chat */
+const[mode,setMode]=useState("food");/* food | chat | prompt */
 const[input,setInput]=useState("");
 const[loading,setLoading]=useState(false);
 const[msgs,setMsgs]=useState([]);
@@ -833,14 +833,19 @@ const apiKey=S.geminiApiKey||"";
 const buildContext=()=>{
   const last7=fl.slice(-7);
   const gp=activeGP;
+  const customPrompt=S.aiPrompt?`\n\nINSTRUCCIONES PERSONALIZADAS DEL USUARIO:\n${S.aiPrompt}`:"";
+  const habitsCtx=habits.filter(h=>h.active).map(h=>`${h.emoji} ${h.name} (${h.meta})`).join(", ");
+  const projCtx=projects.map(p=>`${p.name}: ${p.progress}% ${p.status}`).join(", ");
   return`CONTEXTO DEL USUARIO:
 - Plan: ${S.planName} | Meta: ${S.planGoal}
 - Peso actual: ${curW}kg (inicio: ${S.startWeight}kg, meta: ${S.goalWeight}kg)
 - Cintura actual: ${curWaist}cm (inicio: ${S.startWaist}cm)
-- Semana completada: ${completedWeek}/${S.cutWeeks}
+- Semana completada: ${completedWeek}/${S.cutWeeks} | Día ${Math.min(dayN,totalDays)}/${totalDays}
 - Perfil activo: ${gp.name} → Cal:${gp.cal} Prot:${gp.prot}g Grasa:${gp.fat}g Carbos:${gp.carbs}g Azúcar:≤${gp.sugar}g Entrenos:${gp.trainingPerWeek}x/sem
+- Hábitos activos: ${habitsCtx}
+- Proyectos: ${projCtx}
 - Últimos 7 registros: ${last7.map(e=>`${e.date}:${e.cal}cal,${e.prot}P,${e.fat}G,${e.carbs}C,${e.sugar}S,${e.weight}kg`).join(" | ")}
-- Promedio reciente: Cal:${avg(last7.filter(e=>+e.cal>0),"cal")} Prot:${avg(last7.filter(e=>+e.prot>0),"prot")}g Grasa:${avg(last7.filter(e=>+e.fat>0),"fat")}g Carbos:${avg(last7.filter(e=>+e.carbs>0),"carbs")}g`;
+- Promedio reciente: Cal:${avg(last7.filter(e=>+e.cal>0),"cal")} Prot:${avg(last7.filter(e=>+e.prot>0),"prot")}g Grasa:${avg(last7.filter(e=>+e.fat>0),"fat")}g Carbos:${avg(last7.filter(e=>+e.carbs>0),"carbs")}g${customPrompt}`;
 };
 
 const analyzeFood=async()=>{
@@ -932,13 +937,24 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 
 {/* Mode tabs */}
 <div style={{display:"flex",borderBottom:`1px solid ${C.b1}`}}>
-{[["food","🍽️ Analizar Comida"],["chat","💬 Consultar"]].map(([m,l])=>(
-<button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"8px",background:mode===m?C.bg3:"transparent",border:"none",borderBottom:mode===m?`2px solid ${C.purple}`:"2px solid transparent",color:mode===m?C.t0:C.t3,fontSize:"0.7rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+{[["food","🍽️ Comida"],["chat","💬 Consultar"],["prompt","📝 Mi Contexto"]].map(([m,l])=>(
+<button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"8px",background:mode===m?C.bg3:"transparent",border:"none",borderBottom:mode===m?`2px solid ${C.purple}`:"2px solid transparent",color:mode===m?C.t0:C.t3,fontSize:"0.68rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
 ))}
 </div>
 
+{/* Prompt editor */}
+{mode==="prompt"?<div style={{flex:1,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+<div style={{fontSize:"0.75rem",color:C.t1,fontWeight:600}}>📝 Tu contexto personalizado</div>
+<div style={{fontSize:"0.68rem",color:C.t2,lineHeight:1.5}}>Escribe aquí todo lo que quieras que el AI Coach sepa sobre ti: tu plan, objetivo, restricciones alimentarias, preferencias, lesiones, estilo de entrenamiento, etc. Esto se incluirá en cada consulta automáticamente.</div>
+<textarea style={{...z.inp,flex:1,minHeight:180,fontSize:"0.76rem",lineHeight:1.6,fontFamily:"'IBM Plex Mono',monospace",resize:"none"}} value={S.aiPrompt||""} onChange={e=>sv({...D,settings:{...S,aiPrompt:e.target.value}})}
+placeholder={"Ejemplo:\n- Tengo 24 años, hombre, 1.75m\n- Mi objetivo es bajar de 20% a 15% de grasa corporal en 6 semanas\n- Entreno pesas 5x/semana (PPL) y juego tenis/pádel 2x\n- No me gusta el brócoli ni las espinacas\n- Prefiero comer más carbos antes de entrenar\n- Tengo molestia en el hombro derecho\n- Quiero mantener la masa muscular mientras bajo grasa\n- Mi presupuesto de comida es moderado\n- Vivo en Colombia"}/>
+<div style={{padding:"10px",background:C.bg3,borderRadius:8,border:`1px solid ${C.b1}`}}>
+<div style={{fontSize:"0.6rem",fontWeight:600,color:C.cyan,marginBottom:4}}>📊 Contexto automático (siempre incluido):</div>
+<pre style={{fontSize:"0.58rem",color:C.t3,whiteSpace:"pre-wrap",lineHeight:1.5,maxHeight:100,overflowY:"auto"}}>{buildContext().split("\nINSTRUCCIONES")[0]}</pre>
+</div>
+</div>:null}
 {/* Messages */}
-<div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
+{mode!=="prompt"&&<div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
 {msgs.length===0&&<div style={{textAlign:"center",padding:"30px 10px",color:C.t3,fontSize:"0.75rem"}}>
 {mode==="food"?"🍽️ Escribe lo que comiste y te calculo los macros automáticamente.\n\nEjemplo: \"200g de pollo a la plancha con arroz y ensalada\"":"💬 Pregúntame sobre tu progreso, qué comer, recomendaciones, etc."}
 </div>}
@@ -955,10 +971,10 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 </div>
 <button style={{...z.btn(true),width:"100%",padding:"6px"}} onClick={addFoodToLog}>✅ Agregar al registro de hoy</button>
 </div>}
-</div>
+</div>}
 
 {/* Input */}
-<div style={{padding:"10px 14px",borderTop:`1px solid ${C.b1}`,background:C.bg2}}>
+{mode!=="prompt"&&<div style={{padding:"10px 14px",borderTop:`1px solid ${C.b1}`,background:C.bg2}}>
 {!apiKey?<div style={{fontSize:"0.7rem",color:C.orange,textAlign:"center",padding:6}}>🔑 Configura tu API Key de Gemini arriba para empezar</div>:
 <div style={{display:"flex",gap:6}}>
 <input style={{...z.inp,flex:1,fontSize:"0.78rem",padding:"8px 12px"}} value={input} onChange={e=>setInput(e.target.value)}
@@ -968,7 +984,7 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 <button style={{...z.btn(true),padding:"8px 14px"}} onClick={mode==="food"?analyzeFood:askChat} disabled={loading||!input.trim()}>
 {loading?"...":mode==="food"?"🔍":"📨"}</button>
 </div>}
-</div>
+</div>}
 </div>);
 };
 
@@ -987,6 +1003,13 @@ return(<Mdl title="⚙ Configuración" onClose={onClose} ch={<div style={{displa
 <input style={{...z.inpM,maxWidth:200}} type="password" value={f.geminiApiKey||""} onChange={e=>setF({...f,geminiApiKey:e.target.value})} placeholder="AIzaSy..."/>
 </div>
 <div style={{fontSize:"0.58rem",color:C.t3,marginTop:4}}>Obtén tu key gratis en <a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>aistudio.google.com/apikey</a></div>
+<div style={{marginTop:10}}>
+<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+<span style={{fontSize:"0.8rem",color:C.t2}}>Prompt personalizado</span>
+<span style={{fontSize:"0.55rem",color:C.t3}}>(contexto que el AI siempre tendrá)</span>
+</div>
+<textarea style={{...z.inp,minHeight:120,fontSize:"0.76rem",lineHeight:1.5,fontFamily:"'IBM Plex Mono',monospace"}} value={f.aiPrompt||""} onChange={e=>setF({...f,aiPrompt:e.target.value})} placeholder="Ej: Tengo 24 años, mido 1.75m. Quiero bajar grasa manteniendo músculo. No como mariscos. Entreno PPL 5x/semana..."/>
+</div>
 </div>
 <div style={{display:"flex",gap:8,marginTop:10}}><button style={z.btn(true)} onClick={()=>{sv({...D,settings:f});onClose()}}>Guardar</button><button style={z.btn(false)} onClick={onClose}>Cancelar</button></div>
 </div>}/>)};
