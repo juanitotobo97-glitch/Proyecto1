@@ -794,34 +794,46 @@ return(<div style={z.card}>
 
 /* === AI ASSISTANT (Gemini) === */
 const GEMINI_MODELS=["gemini-2.0-flash-lite","gemini-1.5-flash","gemini-2.0-flash"];
+const geminiURL=(model,key)=>`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 const callGemini=async(prompt,apiKey,onStatus)=>{
-  const maxRetries=3;
+  const maxRetries=2;const errors=[];
   for(let attempt=0;attempt<maxRetries;attempt++){
-    for(let mi=0;mi<GEMINI_MODELS.length;mi++){
-      const model=GEMINI_MODELS[mi];
+    for(const model of GEMINI_MODELS){
       try{
-        if(onStatus)onStatus(`Intentando ${model}${attempt>0?` (intento ${attempt+1})`:""}...`);
-        const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+        if(onStatus)onStatus(`${model}${attempt>0?` (reintento ${attempt+1})`:""}...`);
+        const res=await fetch(geminiURL(model,apiKey),{method:"POST",headers:{"Content-Type":"application/json"},
           body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2048}})});
-        if(res.status===429){
-          if(mi===GEMINI_MODELS.length-1&&attempt<maxRetries-1){
-            const wait=(attempt+1)*5;
-            if(onStatus)onStatus(`Cuota excedida, esperando ${wait}s...`);
-            await new Promise(r=>setTimeout(r,wait*1000));
-          }
-          continue;
-        }
-        if(res.status===404)continue;
-        if(res.status===403){const e=await res.text();throw new Error("API Key inválida o sin permisos. Verifica tu key en aistudio.google.com/apikey")}
-        if(!res.ok){const e=await res.text();throw new Error(`Error ${res.status}: ${e.slice(0,200)}`)}
+        if(res.status===429){errors.push(`${model}: 429 cuota`);continue}
+        if(res.status===404){errors.push(`${model}: 404 no existe`);continue}
+        if(res.status===400){const e=await res.text();throw new Error(`API Key inválida. Verifica en aistudio.google.com/apikey\n(${e.slice(0,100)})`)}
+        if(res.status===403){const e=await res.text();throw new Error(`Sin permisos. Habilita "Generative Language API" en tu proyecto Google Cloud.\n(${e.slice(0,100)})`)}
+        if(!res.ok){const e=await res.text();throw new Error(`${model} error ${res.status}: ${e.slice(0,150)}`)}
         const data=await res.json();
         const text=data.candidates?.[0]?.content?.parts?.[0]?.text;
         if(text)return text;
-      }catch(e){if(e.message.startsWith("API Key")||e.message.startsWith("Error "))throw e}
+        errors.push(`${model}: respuesta vacía`);
+      }catch(e){if(e.message.includes("API Key")||e.message.includes("Sin permisos")||e.message.includes("error "))throw e;errors.push(`${model}: ${e.message}`)}
+    }
+    if(attempt<maxRetries-1){
+      const wait=(attempt+1)*8;
+      if(onStatus)onStatus(`Todos los modelos fallaron, esperando ${wait}s...`);
+      await new Promise(r=>setTimeout(r,wait*1000));
     }
   }
-  throw new Error("QUOTA_EXCEEDED");
+  throw new Error(`QUOTA|${errors.join("; ")}`);
+};
+
+const testGeminiKey=async(key)=>{
+  const results=[];
+  for(const model of GEMINI_MODELS){
+    try{
+      const res=await fetch(geminiURL(model,key),{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts:[{text:"Responde solo: OK"}]}],generationConfig:{maxOutputTokens:10}})});
+      if(res.ok){const d=await res.json();results.push(`✅ ${model}: OK`);return{ok:true,results:[...results]}}
+      else{const t=await res.text();results.push(`❌ ${model}: ${res.status} - ${t.slice(0,80)}`)}
+    }catch(e){results.push(`❌ ${model}: ${e.message.slice(0,60)}`)}
+  }
+  return{ok:false,results};
 };
 
 const AIAssistant=()=>{
@@ -835,6 +847,7 @@ const[parsedFood,setParsedFood]=useState(null);
 const[keyInput,setKeyInput]=useState(S.geminiApiKey||"");
 const[showKey,setShowKey]=useState(!S.geminiApiKey);
 const[lastAction,setLastAction]=useState(null);/* {type:"food"|"chat",input:string} for retry */
+const[testResult,setTestResult]=useState(null);/* null | "testing" | {ok,results} */
 const chatRef=useRef(null);
 
 const saveKey=(k)=>{sv({...D,settings:{...S,geminiApiKey:k}});setShowKey(false)};
@@ -886,8 +899,10 @@ COMIDA: ${foodText}`;
       setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
     }
   }catch(e){
-    if(e.message==="QUOTA_EXCEEDED")setMsgs(prev=>[...prev,{role:"ai",text:"⏳ Cuota excedida. El free tier permite 15 requests/min. Presiona 🔄 para reintentar.",retry:true}]);
-    else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
+    if(e.message.startsWith("QUOTA|")){
+      const detail=e.message.slice(6);
+      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Todos los modelos fallaron:\n${detail}\n\nPresiona 🔄 para reintentar o verifica tu API key con el botón 🧪 Test.`,retry:true}]);
+    }else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
   }
   setLoading(false);setInput("");setLoadStatus("");
 };
@@ -924,8 +939,10 @@ Responde de forma directa y personalizada basándote en los datos del usuario.`;
     const resp=await callGemini(prompt,apiKey,s=>setLoadStatus(s));
     setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
   }catch(e){
-    if(e.message==="QUOTA_EXCEEDED")setMsgs(prev=>[...prev,{role:"ai",text:"⏳ Cuota excedida. El free tier permite 15 requests/min. Presiona 🔄 para reintentar.",retry:true}]);
-    else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
+    if(e.message.startsWith("QUOTA|")){
+      const detail=e.message.slice(6);
+      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Todos los modelos fallaron:\n${detail}\n\nPresiona 🔄 para reintentar o verifica tu API key con el botón 🧪 Test.`,retry:true}]);
+    }else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
   }
   setLoading(false);setLoadStatus("");
 };
@@ -950,11 +967,17 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 
 {/* API Key config */}
 {showKey&&<div style={{padding:"10px 14px",background:C.bg2,borderBottom:`1px solid ${C.b1}`}}>
-<div style={{fontSize:"0.65rem",color:C.t2,marginBottom:6}}>API Key de Google Gemini (<a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>obtener gratis</a>)</div>
+<div style={{fontSize:"0.65rem",color:C.t2,marginBottom:6}}>API Key de Google Gemini (<a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>obtener gratis aquí</a>)</div>
 <div style={{display:"flex",gap:6}}>
 <input style={{...z.inpM,fontSize:"0.7rem",flex:1}} type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)} placeholder="AIzaSy..."/>
 <button style={z.btnS(true)} onClick={()=>saveKey(keyInput)}>✓</button>
+<button style={{...z.btnS(false),fontSize:"0.6rem",whiteSpace:"nowrap"}} onClick={async()=>{setTestResult("testing");const r=await testGeminiKey(keyInput||apiKey);setTestResult(r)}}>🧪 Test</button>
 </div>
+{testResult==="testing"&&<div style={{fontSize:"0.6rem",color:C.cyan,marginTop:6}}>Probando conexión con cada modelo...</div>}
+{testResult&&testResult!=="testing"&&<div style={{fontSize:"0.6rem",marginTop:6,padding:8,background:C.bg3,borderRadius:6}}>
+{testResult.results.map((r,i)=><div key={i} style={{color:r.startsWith("✅")?C.green:C.red,marginBottom:2}}>{r}</div>)}
+<div style={{marginTop:4,color:C.t3}}>{testResult.ok?"✅ La API key funciona correctamente":"❌ Ningún modelo respondió. Verifica que tu key sea de aistudio.google.com/apikey"}</div>
+</div>}
 </div>}
 
 {/* Mode tabs */}
