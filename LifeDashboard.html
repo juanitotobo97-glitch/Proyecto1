@@ -98,7 +98,7 @@ const DEF_GOALS=[
 {id:"bulk",name:"Bulking",cal:3000,prot:180,fat:80,carbs:350,sugar:50,trainingPerWeek:5},
 {id:"mantenimiento",name:"Mantenimiento",cal:2500,prot:170,fat:70,carbs:280,sugar:45,trainingPerWeek:4},
 {id:"personalizado",name:"Personalizado",cal:2250,prot:170,fat:65,carbs:220,sugar:40,trainingPerWeek:5}];
-const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],goalProfiles:DEF_GOALS,activeGoalProfile:"cut"};
+const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],goalProfiles:DEF_GOALS,activeGoalProfile:"cut",geminiApiKey:""};
 
 const DEF_HAB=[
 {id:"h1",name:"Gym / Pesas",emoji:"💪",meta:"5x/semana",active:true},
@@ -792,6 +792,172 @@ return(<div style={z.card}>
 </div>
 </div>)};
 
+/* === AI ASSISTANT (Gemini) === */
+const callGemini=async(prompt,apiKey)=>{
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2048}})});
+  if(!res.ok){const e=await res.text();throw new Error(`Gemini API error ${res.status}: ${e}`)}
+  const data=await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text||"Sin respuesta";
+};
+
+const AIAssistant=()=>{
+const[open,setOpen]=useState(false);
+const[mode,setMode]=useState("food");/* food | chat */
+const[input,setInput]=useState("");
+const[loading,setLoading]=useState(false);
+const[msgs,setMsgs]=useState([]);
+const[parsedFood,setParsedFood]=useState(null);
+const[keyInput,setKeyInput]=useState(S.geminiApiKey||"");
+const[showKey,setShowKey]=useState(!S.geminiApiKey);
+const chatRef=useRef(null);
+
+const saveKey=(k)=>{sv({...D,settings:{...S,geminiApiKey:k}});setShowKey(false)};
+const apiKey=S.geminiApiKey||"";
+
+const buildContext=()=>{
+  const last7=fl.slice(-7);
+  const gp=activeGP;
+  return`CONTEXTO DEL USUARIO:
+- Plan: ${S.planName} | Meta: ${S.planGoal}
+- Peso actual: ${curW}kg (inicio: ${S.startWeight}kg, meta: ${S.goalWeight}kg)
+- Cintura actual: ${curWaist}cm (inicio: ${S.startWaist}cm)
+- Semana completada: ${completedWeek}/${S.cutWeeks}
+- Perfil activo: ${gp.name} → Cal:${gp.cal} Prot:${gp.prot}g Grasa:${gp.fat}g Carbos:${gp.carbs}g Azúcar:≤${gp.sugar}g Entrenos:${gp.trainingPerWeek}x/sem
+- Últimos 7 registros: ${last7.map(e=>`${e.date}:${e.cal}cal,${e.prot}P,${e.fat}G,${e.carbs}C,${e.sugar}S,${e.weight}kg`).join(" | ")}
+- Promedio reciente: Cal:${avg(last7.filter(e=>+e.cal>0),"cal")} Prot:${avg(last7.filter(e=>+e.prot>0),"prot")}g Grasa:${avg(last7.filter(e=>+e.fat>0),"fat")}g Carbos:${avg(last7.filter(e=>+e.carbs>0),"carbs")}g`;
+};
+
+const analyzeFood=async()=>{
+  if(!input.trim()||!apiKey)return;
+  setLoading(true);setParsedFood(null);
+  try{
+    const prompt=`Eres un nutricionista experto. El usuario te dice qué comió. Analiza la comida y estima los macronutrientes TOTALES del día o de la comida descrita.
+
+IMPORTANTE: Responde SIEMPRE en este formato JSON exacto (solo el JSON, sin texto extra):
+{"cal":number,"prot":number,"fat":number,"carbs":number,"sugar":number,"detail":"descripción breve de cada alimento y sus macros estimados"}
+
+Si el usuario describe varias comidas o todo lo del día, suma todo.
+Sé preciso con las porciones. Si no menciona cantidad, asume porciones normales.
+
+${buildContext()}
+
+COMIDA: ${input.trim()}`;
+    const resp=await callGemini(prompt,apiKey);
+    const jsonMatch=resp.match(/\{[\s\S]*\}/);
+    if(jsonMatch){
+      const parsed=JSON.parse(jsonMatch[0]);
+      setParsedFood({cal:Math.round(+parsed.cal||0),prot:Math.round(+parsed.prot||0),fat:Math.round(+parsed.fat||0),carbs:Math.round(+parsed.carbs||0),sugar:Math.round(+parsed.sugar||0),detail:parsed.detail||""});
+      setMsgs(prev=>[...prev,{role:"user",text:input},{role:"ai",text:`🍽️ Análisis:\n${parsed.detail}\n\n📊 Totales: ${parsed.cal} kcal | ${parsed.prot}g P | ${parsed.fat}g G | ${parsed.carbs}g C | ${parsed.sugar}g S`}]);
+    } else {
+      setMsgs(prev=>[...prev,{role:"user",text:input},{role:"ai",text:resp}]);
+    }
+  }catch(e){setMsgs(prev=>[...prev,{role:"ai",text:"❌ Error: "+e.message}])}
+  setLoading(false);setInput("");
+};
+
+const addFoodToLog=()=>{
+  if(!parsedFood)return;
+  const entry={date:todayS(),week:`S${currentWeek}`,dayType:"dt2",weight:"",waist:"",cal:parsedFood.cal,prot:parsedFood.prot,fat:parsedFood.fat,carbs:parsedFood.carbs,sugar:parsedFood.sugar,steps:"",sleep:"",notes:"AI: "+input};
+  const existing=fl.findIndex(e=>e.date===todayS());
+  const log=[...fl];
+  if(existing>=0){
+    log[existing]={...log[existing],cal:(+log[existing].cal||0)+parsedFood.cal,prot:(+log[existing].prot||0)+parsedFood.prot,fat:(+log[existing].fat||0)+parsedFood.fat,carbs:(+log[existing].carbs||0)+parsedFood.carbs,sugar:(+log[existing].sugar||0)+parsedFood.sugar,notes:log[existing].notes?(log[existing].notes+"; AI: "+parsedFood.detail):("AI: "+parsedFood.detail)};
+  } else { log.push(entry);log.sort((a,b)=>a.date.localeCompare(b.date)); }
+  sv({...D,fitnessLog:log});
+  setMsgs(prev=>[...prev,{role:"ai",text:"✅ Registrado en fitness log"+(existing>=0?" (sumado al registro existente de hoy)":"")}]);
+  setParsedFood(null);
+};
+
+const askChat=async()=>{
+  if(!input.trim()||!apiKey)return;
+  setLoading(true);
+  const userMsg=input.trim();setInput("");
+  setMsgs(prev=>[...prev,{role:"user",text:userMsg}]);
+  try{
+    const history=msgs.slice(-6).map(m=>`${m.role==="user"?"USUARIO":"ASISTENTE"}: ${m.text}`).join("\n");
+    const prompt=`Eres un coach de fitness y nutrición experto. Responde en español, de forma concisa y útil. Usa emojis moderadamente.
+
+${buildContext()}
+
+${history?`HISTORIAL:\n${history}\n`:""}
+USUARIO: ${userMsg}
+
+Responde de forma directa y personalizada basándote en los datos del usuario.`;
+    const resp=await callGemini(prompt,apiKey);
+    setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
+  }catch(e){setMsgs(prev=>[...prev,{role:"ai",text:"❌ Error: "+e.message}])}
+  setLoading(false);
+};
+
+useEffect(()=>{if(chatRef.current)chatRef.current.scrollTop=chatRef.current.scrollHeight},[msgs]);
+
+if(!open)return(<button onClick={()=>setOpen(true)} style={{position:"fixed",bottom:85,right:20,width:52,height:52,borderRadius:"50%",background:`linear-gradient(135deg,${C.purple},${C.blue})`,border:"none",color:"#fff",fontSize:"1.3rem",cursor:"pointer",boxShadow:"0 4px 20px rgba(91,157,245,0.4)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",animation:"pulse 3s infinite"}}>🤖</button>);
+
+return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc(100vw - 24px)",height:520,maxHeight:"calc(100vh - 40px)",background:C.bg1,border:`1px solid ${C.b1}`,borderRadius:16,boxShadow:"0 8px 40px rgba(0,0,0,0.6)",zIndex:100,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+{/* Header */}
+<div style={{padding:"12px 16px",borderBottom:`1px solid ${C.b1}`,display:"flex",alignItems:"center",gap:8,background:`linear-gradient(135deg,${C.bg2},${C.bg3})`}}>
+<span style={{fontSize:"1.2rem"}}>🤖</span>
+<div style={{flex:1}}>
+<div style={{fontSize:"0.82rem",fontWeight:700}}>AI Coach</div>
+<div style={{fontSize:"0.55rem",color:C.t3}}>Gemini · {mode==="food"?"Analizar comida":"Consulta libre"}</div>
+</div>
+<button onClick={()=>setShowKey(!showKey)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"0.7rem"}}>🔑</button>
+<button onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"1rem"}}>✕</button>
+</div>
+
+{/* API Key config */}
+{showKey&&<div style={{padding:"10px 14px",background:C.bg2,borderBottom:`1px solid ${C.b1}`}}>
+<div style={{fontSize:"0.65rem",color:C.t2,marginBottom:6}}>API Key de Google Gemini (<a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>obtener gratis</a>)</div>
+<div style={{display:"flex",gap:6}}>
+<input style={{...z.inpM,fontSize:"0.7rem",flex:1}} type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)} placeholder="AIzaSy..."/>
+<button style={z.btnS(true)} onClick={()=>saveKey(keyInput)}>✓</button>
+</div>
+</div>}
+
+{/* Mode tabs */}
+<div style={{display:"flex",borderBottom:`1px solid ${C.b1}`}}>
+{[["food","🍽️ Analizar Comida"],["chat","💬 Consultar"]].map(([m,l])=>(
+<button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"8px",background:mode===m?C.bg3:"transparent",border:"none",borderBottom:mode===m?`2px solid ${C.purple}`:"2px solid transparent",color:mode===m?C.t0:C.t3,fontSize:"0.7rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+))}
+</div>
+
+{/* Messages */}
+<div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
+{msgs.length===0&&<div style={{textAlign:"center",padding:"30px 10px",color:C.t3,fontSize:"0.75rem"}}>
+{mode==="food"?"🍽️ Escribe lo que comiste y te calculo los macros automáticamente.\n\nEjemplo: \"200g de pollo a la plancha con arroz y ensalada\"":"💬 Pregúntame sobre tu progreso, qué comer, recomendaciones, etc."}
+</div>}
+{msgs.map((m,i)=>(<div key={i} style={{alignSelf:m.role==="user"?"flex-end":"flex-start",maxWidth:"85%",padding:"8px 12px",borderRadius:m.role==="user"?"12px 12px 4px 12px":"12px 12px 12px 4px",background:m.role==="user"?C.purple+"25":C.bg3,border:`1px solid ${m.role==="user"?C.purple+"40":C.b1}`,fontSize:"0.76rem",color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.5}}>
+{m.text}
+</div>))}
+{loading&&<div style={{alignSelf:"flex-start",padding:"8px 12px",borderRadius:12,background:C.bg3,fontSize:"0.76rem",color:C.t3,animation:"pulse 1s infinite"}}>Analizando...</div>}
+{parsedFood&&<div style={{padding:"10px",background:C.green+"15",border:`1px solid ${C.green}30`,borderRadius:10}}>
+<div style={{fontSize:"0.68rem",fontWeight:600,color:C.green,marginBottom:6}}>📊 Macros detectados:</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4,marginBottom:8}}>
+{[["Cal",parsedFood.cal,C.orange],["Prot",parsedFood.prot+"g",C.blue],["Grasa",parsedFood.fat+"g",C.red],["Carbos",parsedFood.carbs+"g",C.green],["Azúcar",parsedFood.sugar+"g",C.pink]].map(([l,v,c])=>(
+<div key={l} style={{textAlign:"center"}}><div style={{fontSize:"0.5rem",color:c,fontWeight:600}}>{l}</div><div style={{fontFamily:"monospace",fontSize:"0.78rem",fontWeight:700}}>{v}</div></div>
+))}
+</div>
+<button style={{...z.btn(true),width:"100%",padding:"6px"}} onClick={addFoodToLog}>✅ Agregar al registro de hoy</button>
+</div>}
+</div>
+
+{/* Input */}
+<div style={{padding:"10px 14px",borderTop:`1px solid ${C.b1}`,background:C.bg2}}>
+{!apiKey?<div style={{fontSize:"0.7rem",color:C.orange,textAlign:"center",padding:6}}>🔑 Configura tu API Key de Gemini arriba para empezar</div>:
+<div style={{display:"flex",gap:6}}>
+<input style={{...z.inp,flex:1,fontSize:"0.78rem",padding:"8px 12px"}} value={input} onChange={e=>setInput(e.target.value)}
+  placeholder={mode==="food"?"¿Qué comiste? Ej: pollo con arroz...":"Pregúntale al coach..."}
+  onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();mode==="food"?analyzeFood():askChat()}}}
+  disabled={loading}/>
+<button style={{...z.btn(true),padding:"8px 14px"}} onClick={mode==="food"?analyzeFood:askChat} disabled={loading||!input.trim()}>
+{loading?"...":mode==="food"?"🔍":"📨"}</button>
+</div>}
+</div>
+</div>);
+};
+
 /* === SETTINGS === */
 const SettingsModal=({onClose})=>{const[f,setF]=useState({...S});
 return(<Mdl title="⚙ Configuración" onClose={onClose} ch={<div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -800,6 +966,14 @@ return(<Mdl title="⚙ Configuración" onClose={onClose} ch={<div style={{displa
 {t==="n"?<input style={{...z.inpM,maxWidth:100,textAlign:"right"}} type="number" step={k.includes("Weight")||k.includes("Waist")?"0.1":"1"} value={f[k]} onChange={e=>setF({...f,[k]:+e.target.value})}/>:
 <input style={{...z.inp,maxWidth:200}} value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})}/>}</div>))}
 <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>Fecha inicio</span><input style={{...z.inpM,maxWidth:155}} type="date" value={f.startDate} onChange={e=>setF({...f,startDate:e.target.value})}/></div>
+<div style={{borderTop:`1px solid ${C.b1}`,marginTop:10,paddingTop:10}}>
+<div style={{fontSize:"0.65rem",fontWeight:600,color:C.purple,marginBottom:6}}>🤖 AI Coach (Google Gemini)</div>
+<div style={{display:"flex",alignItems:"center",gap:10}}>
+<span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>API Key</span>
+<input style={{...z.inpM,maxWidth:200}} type="password" value={f.geminiApiKey||""} onChange={e=>setF({...f,geminiApiKey:e.target.value})} placeholder="AIzaSy..."/>
+</div>
+<div style={{fontSize:"0.58rem",color:C.t3,marginTop:4}}>Obtén tu key gratis en <a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>aistudio.google.com/apikey</a></div>
+</div>
 <div style={{display:"flex",gap:8,marginTop:10}}><button style={z.btn(true)} onClick={()=>{sv({...D,settings:f});onClose()}}>Guardar</button><button style={z.btn(false)} onClick={onClose}>Cancelar</button></div>
 </div>}/>)};
 
@@ -902,6 +1076,9 @@ return(
 {pg==="horario"&&<HorarioPage/>}
 {pg==="lectura"&&<LecturaPage/>}
 </div>
+
+{/* AI Assistant */}
+<AIAssistant/>
 
 {/* Mobile bottom nav */}
 <div className="mob-bar">
