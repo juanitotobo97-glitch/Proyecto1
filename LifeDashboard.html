@@ -793,30 +793,41 @@ return(<div style={z.card}>
 </div>)};
 
 /* === AI ASSISTANT (Gemini) === */
-const GEMINI_MODELS=["gemini-2.0-flash-lite","gemini-2.0-flash"];
-const geminiURL=(model,key)=>`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+const GEMINI_ENDPOINTS=[
+  {model:"gemini-2.0-flash-lite",ver:"v1beta"},
+  {model:"gemini-2.0-flash",ver:"v1beta"},
+  {model:"gemini-2.0-flash-lite",ver:"v1"},
+  {model:"gemini-2.0-flash",ver:"v1"},
+];
+const geminiURL=(model,ver,key)=>`https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${key}`;
 const callGemini=async(prompt,apiKey,onStatus)=>{
   const maxRetries=3;const errors=[];
   for(let attempt=0;attempt<maxRetries;attempt++){
-    for(const model of GEMINI_MODELS){
+    for(const ep of GEMINI_ENDPOINTS){
       try{
-        if(onStatus)onStatus(`${model}${attempt>0?` (intento ${attempt+1}/${maxRetries})`:""}...`);
-        const res=await fetch(geminiURL(model,apiKey),{method:"POST",headers:{"Content-Type":"application/json"},
+        const label=`${ep.model} (${ep.ver})`;
+        if(onStatus)onStatus(`${label}${attempt>0?` intento ${attempt+1}/${maxRetries}`:""}...`);
+        const res=await fetch(geminiURL(ep.model,ep.ver,apiKey),{method:"POST",headers:{"Content-Type":"application/json"},
           body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2048}})});
-        if(res.status===429){errors.push(`${model}: 429 cuota`);continue}
-        if(res.status===404){errors.push(`${model}: 404 no disponible`);continue}
-        if(res.status===400){const e=await res.text();throw new Error(`API Key inválida. Verifica en aistudio.google.com/apikey\n(${e.slice(0,100)})`)}
-        if(res.status===403){const e=await res.text();throw new Error(`Sin permisos. Habilita "Generative Language API" en tu proyecto.\n(${e.slice(0,100)})`)}
-        if(!res.ok){const e=await res.text();throw new Error(`${model} error ${res.status}: ${e.slice(0,150)}`)}
+        if(res.status===429){errors.push(`${label}: 429`);continue}
+        if(res.status===404){errors.push(`${label}: 404`);continue}
+        if(res.status===400){const e=await res.text();
+          if(e.includes("API_KEY_INVALID"))throw new Error("KEY_INVALID");
+          errors.push(`${label}: 400`);continue}
+        if(res.status===403){throw new Error("NO_PERMS")}
+        if(!res.ok){errors.push(`${label}: ${res.status}`);continue}
         const data=await res.json();
         const text=data.candidates?.[0]?.content?.parts?.[0]?.text;
         if(text)return text;
-        errors.push(`${model}: respuesta vacía`);
-      }catch(e){if(e.message.includes("API Key")||e.message.includes("Sin permisos")||e.message.includes("error "))throw e;errors.push(`${model}: ${e.message}`)}
+        errors.push(`${label}: vacío`);
+      }catch(e){
+        if(e.message==="KEY_INVALID")throw new Error("KEY_INVALID");
+        if(e.message==="NO_PERMS")throw new Error("NO_PERMS");
+        errors.push(`${ep.model}: ${e.message.slice(0,40)}`)}
     }
     if(attempt<maxRetries-1){
-      const wait=15+attempt*15;/* 15s, 30s */
-      if(onStatus)onStatus(`⏳ Cuota excedida. Esperando ${wait}s antes de reintentar (${attempt+2}/${maxRetries})...`);
+      const wait=20+attempt*20;/* 20s, 40s */
+      if(onStatus)onStatus(`⏳ Rate limit. Esperando ${wait}s... (intento ${attempt+2}/${maxRetries})`);
       await new Promise(r=>setTimeout(r,wait*1000));
     }
   }
@@ -825,23 +836,29 @@ const callGemini=async(prompt,apiKey,onStatus)=>{
 
 const testGeminiKey=async(key,onProgress)=>{
   const results=[];
-  /* Solo probar 1 modelo para no gastar cuota */
-  const model=GEMINI_MODELS[0];
-  if(onProgress)onProgress(`Probando ${model}...`);
+  /* Probar solo 1 endpoint para no gastar cuota */
+  const ep=GEMINI_ENDPOINTS[0];
+  const label=`${ep.model} (${ep.ver})`;
+  if(onProgress)onProgress(`Probando ${label}...`);
   try{
-    const res=await fetch(geminiURL(model,key),{method:"POST",headers:{"Content-Type":"application/json"},
+    const res=await fetch(geminiURL(ep.model,ep.ver,key),{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({contents:[{parts:[{text:"Responde solo: OK"}]}],generationConfig:{maxOutputTokens:10}})});
-    if(res.ok){results.push(`✅ ${model}: OK — Tu key funciona`);return{ok:true,results}}
-    const t=await res.text();const msg=t.slice(0,120);
+    if(res.ok){results.push(`✅ Funciona correctamente`);return{ok:true,results}}
+    const t=await res.text();
     if(res.status===429){
-      results.push(`⏳ ${model}: 429 — Cuota temporal excedida`);
-      results.push(`💡 Tu key es válida pero estás en rate limit.`);
-      results.push(`Espera 1-2 minutos sin hacer requests y vuelve a intentar.`);
+      results.push(`⏳ 429 — Rate limit activo`);
+      results.push(`Tu key parece válida pero excediste la cuota.`);
+      results.push(`Pasos: 1) Espera 2 min sin tocar nada`);
+      results.push(`2) Si sigue, ve a aistudio.google.com`);
+      results.push(`3) Genera una API key NUEVA`);
       return{ok:false,rateLimit:true,results};
     }
-    if(res.status===400)results.push(`❌ API Key inválida (400). Genera una nueva.`);
+    if(res.status===400){
+      if(t.includes("API_KEY_INVALID")){results.push(`❌ API Key inválida. Genera una nueva en aistudio.google.com/apikey`)}
+      else{results.push(`❌ Error 400: ${t.slice(0,100)}`)}
+    }
     else if(res.status===403)results.push(`❌ Sin permisos (403). Habilita Generative Language API.`);
-    else results.push(`❌ ${model}: ${res.status} - ${msg}`);
+    else results.push(`❌ ${label}: ${res.status} - ${t.slice(0,100)}`);
   }catch(e){results.push(`❌ Error de red: ${e.message.slice(0,80)}`)}
   return{ok:false,results};
 };
@@ -910,8 +927,11 @@ COMIDA: ${foodText}`;
     }
   }catch(e){
     if(e.message.startsWith("QUOTA|")){
-      const detail=e.message.slice(6);
-      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Todos los modelos fallaron:\n${detail}\n\nPresiona 🔄 para reintentar o verifica tu API key con el botón 🧪 Test.`,retry:true}]);
+      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Rate limit de Google (429)\n\nTu API key probablemente es válida pero se agotó la cuota temporal.\n\nSoluciones:\n1. Espera 2-3 minutos y presiona 🔄\n2. Si persiste: genera una KEY NUEVA en aistudio.google.com/apikey\n3. Revisa tu cuota en console.cloud.google.com`,retry:true}]);
+    }else if(e.message==="KEY_INVALID"){
+      setMsgs(prev=>[...prev,{role:"ai",text:`❌ API Key inválida\n\nVe a aistudio.google.com/apikey y genera una nueva.`}]);
+    }else if(e.message==="NO_PERMS"){
+      setMsgs(prev=>[...prev,{role:"ai",text:`❌ Sin permisos (403)\n\nHabilita "Generative Language API" en tu proyecto de Google Cloud.`}]);
     }else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
   }
   setLoading(false);setInput("");setLoadStatus("");
@@ -950,8 +970,11 @@ Responde de forma directa y personalizada basándote en los datos del usuario.`;
     setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
   }catch(e){
     if(e.message.startsWith("QUOTA|")){
-      const detail=e.message.slice(6);
-      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Todos los modelos fallaron:\n${detail}\n\nPresiona 🔄 para reintentar o verifica tu API key con el botón 🧪 Test.`,retry:true}]);
+      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Rate limit de Google (429)\n\nEspera 2-3 minutos y presiona 🔄\nSi persiste: genera una KEY NUEVA en aistudio.google.com/apikey`,retry:true}]);
+    }else if(e.message==="KEY_INVALID"){
+      setMsgs(prev=>[...prev,{role:"ai",text:`❌ API Key inválida. Genera una nueva en aistudio.google.com/apikey`}]);
+    }else if(e.message==="NO_PERMS"){
+      setMsgs(prev=>[...prev,{role:"ai",text:`❌ Sin permisos. Habilita "Generative Language API" en Google Cloud.`}]);
     }else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
   }
   setLoading(false);setLoadStatus("");
