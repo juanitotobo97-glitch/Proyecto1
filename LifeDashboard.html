@@ -870,6 +870,30 @@ const callAI=async(prompt,provider,apiKey,onStatus)=>{
   return callGemini(prompt,apiKey,onStatus);
 };
 
+/* CalorieNinjas API - exact nutritional data from USDA database */
+const callCalorieNinjas=async(query,cnKey)=>{
+  const resp=await fetch(`https://api.calorieninjas.com/v1/nutrition?query=${encodeURIComponent(query)}`,{
+    headers:{"X-Api-Key":cnKey}
+  });
+  if(!resp.ok){
+    if(resp.status===401||resp.status===403)throw new Error("CN_KEY_INVALID");
+    if(resp.status===429)throw new Error("CN_RATE_LIMIT");
+    throw new Error(`CalorieNinjas error: ${resp.status}`);
+  }
+  const data=await resp.json();
+  return(data.items||[]).map(it=>({
+    name:it.name||"?",
+    cal:+(it.calories)||0,
+    prot:+(it.protein_g)||0,
+    fat:+(it.fat_total_g)||0,
+    carbs:+(it.carbohydrates_total_g)||0,
+    sugar:+(it.sugar_g)||0,
+    fiber:+(it.fiber_g)||0,
+    serving:+(it.serving_size_g)||0,
+    source:"api"
+  }));
+};
+
 const testGeminiKey=async(key,onProgress)=>{
   const results=[];
   const ep=GEMINI_ENDPOINTS[0];
@@ -1054,146 +1078,150 @@ const analyzeFood=async(retryInput)=>{
   setLoading(true);setParsedFood(null);setLoadStatus("");
   setLastAction({type:"food",input:foodText});
   if(!retryInput)setMsgs(prev=>[...prev,{role:"user",text:foodText}]);
+  const r1=v=>Math.round((+v||0)*10)/10;
+  const cnKey=S.calorieNinjasKey||"";
+
   try{
-    /* Search real food databases first */
-    const dbResults=await searchFoodDB(foodText);
-    const dbSection=dbResults.length>0?`
-DATOS REALES ENCONTRADOS EN BASE DE DATOS (OpenFoodFacts) - USA ESTOS VALORES COMO PRIORIDAD:
-${dbResults.map((r,i)=>`${i+1}. "${r.name}"${r.brand?" ("+r.brand+")":""}${r.serving?" [porción: "+r.serving+"]":""} → por 100g: ${r.cal100}cal, ${r.prot100}g prot, ${r.fat100}g grasa, ${r.carbs100}g carbs, ${r.sugar100}g azúcar, ${r.fiber100||0}g fibra`).join("\n")}
+    /* ========== HYBRID MODE: CalorieNinjas (exact data) ========== */
+    if(cnKey){
+      /* Step 1: AI translates/parses Spanish → English with quantities */
+      setLoadStatus("🤖 Interpretando comida...");
+      const parsePrompt=`Convert this food description to English for a nutrition API query. Rules:
+1. Translate each food item to English with its quantity in grams
+2. If quantity is mentioned, keep it. If not, assume normal portions:
+   - 1 huevo/egg = 50g, 1 banano/banana = 120g, 1 pechuga/chicken breast = 150g
+   - 1 taza/cup arroz/rice (cooked) = 160g, 1 arepa = 100g, 1 pan/bread slice = 30g
+3. IMPORTANT: specify "cooked" or "raw" for meats, rice, pasta, beans (default to COOKED if not specified)
+4. Separate items with " and "
+5. Output ONLY the English query, nothing else
 
-INSTRUCCIÓN: Selecciona el producto que mejor coincida con lo que el usuario describió. Usa SUS valores nutricionales (por 100g) y calcula proporcionalmente según la cantidad indicada.
-`:`
-No se encontraron resultados exactos en la base de datos. Usa la tabla de referencia y tus conocimientos nutricionales.
-`;
-    setLoadStatus("🤖 Calculando macros...");
-    const prompt=`Eres un nutricionista certificado. Tu trabajo es calcular macros EXACTOS de cada alimento.
+Examples:
+- "200g arroz con 150g pechuga" → "200g cooked white rice and 150g cooked chicken breast"
+- "2 huevos con arepa y café con leche" → "2 eggs and 100g corn arepa and 200ml coffee with whole milk"
+- "156g lomo fino" → "156g cooked beef tenderloin"
+- "pasta con carne molida" → "200g cooked pasta and 150g cooked ground beef"
+- "avena con banano y leche" → "60g oats and 1 banana and 200ml whole milk"
 
-IMPORTANTE: CADA alimento DEBE tener calorías > 0. Todo alimento real tiene calorías. Si no estás seguro, estima basándote en alimentos similares de la tabla.
+Food: "${foodText}"`;
+      const enQuery=await callAI(parsePrompt,provider,apiKey,s=>setLoadStatus(s));
+      const cleanQuery=enQuery.replace(/^["'\s]+|["'\s]+$/g,"").replace(/\n/g," ").trim();
 
-${dbSection}
-TABLA DE REFERENCIA (valores por 100g de porción comestible COCIDA/lista para comer):
+      /* Step 2: CalorieNinjas gets exact USDA macros */
+      setLoadStatus("📊 Consultando base de datos USDA...");
+      let cnItems=await callCalorieNinjas(cleanQuery,cnKey);
 
-CARNES Y PROTEÍNAS:
-- Pechuga de pollo cocida: 165cal, 31.0g prot, 3.6g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Muslo de pollo cocido: 209cal, 26.0g prot, 10.9g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Lomo de res/fino cocido: 160cal, 28.0g prot, 5.0g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Carne res molida cocida (90/10): 196cal, 26.0g prot, 10.0g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Carne res molida cocida (80/20): 254cal, 26.0g prot, 17.0g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Costilla de res cocida: 260cal, 26.0g prot, 16.5g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Lomo de cerdo cocido: 190cal, 27.0g prot, 8.5g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Chuleta de cerdo cocida: 231cal, 25.0g prot, 14.0g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Salmón cocido: 208cal, 20.0g prot, 13.0g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Atún en lata: 116cal, 25.5g prot, 0.8g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Camarón cocido: 99cal, 24.0g prot, 0.3g grasa, 0.2g carbs, 0g azúcar, 0g fibra
-- Huevo entero (unidad ~50g): 72cal, 6.3g prot, 4.8g grasa, 0.4g carbs, 0.4g azúcar, 0g fibra
-- Clara de huevo (unidad ~33g): 17cal, 3.6g prot, 0.1g grasa, 0.2g carbs, 0.2g azúcar, 0g fibra
-- Whey protein (scoop 30g): 120cal, 24.0g prot, 1.5g grasa, 3.0g carbs, 1.0g azúcar, 0g fibra
-
-CARBOHIDRATOS Y GRANOS:
-- Arroz blanco cocido: 130cal, 2.7g prot, 0.3g grasa, 28.0g carbs, 0g azúcar, 0.4g fibra
-- Arroz integral cocido: 123cal, 2.7g prot, 1.0g grasa, 25.6g carbs, 0g azúcar, 1.6g fibra
-- Pasta cocida: 158cal, 5.8g prot, 0.9g grasa, 31.0g carbs, 0.6g azúcar, 1.8g fibra
-- Avena en hojuelas (cruda): 389cal, 13.2g prot, 6.5g grasa, 66.0g carbs, 1.0g azúcar, 10.1g fibra
-- Papa cocida: 87cal, 1.9g prot, 0.1g grasa, 20.0g carbs, 0.8g azúcar, 2.2g fibra
-- Yuca cocida: 160cal, 1.4g prot, 0.3g grasa, 38.0g carbs, 1.7g azúcar, 1.8g fibra
-- Pan blanco (rebanada ~30g): 80cal, 2.7g prot, 1.0g grasa, 15.0g carbs, 1.5g azúcar, 1.2g fibra
-- Pan integral (rebanada ~30g): 70cal, 3.5g prot, 1.0g grasa, 12.0g carbs, 1.5g azúcar, 2.0g fibra
-- Arepa de maíz (unidad ~100g): 200cal, 4.0g prot, 2.0g grasa, 43.0g carbs, 1.0g azúcar, 2.0g fibra
-- Tortilla de maíz (unidad ~30g): 63cal, 1.5g prot, 0.7g grasa, 13.0g carbs, 0.3g azúcar, 1.5g fibra
-
-FRUTAS Y VEGETALES:
-- Banano (unidad mediana ~120g): 105cal, 1.3g prot, 0.4g grasa, 27.0g carbs, 14.0g azúcar, 2.6g fibra
-- Manzana (unidad ~180g): 95cal, 0.5g prot, 0.3g grasa, 25.0g carbs, 19.0g azúcar, 4.4g fibra
-- Plátano maduro frito: 265cal, 1.2g prot, 11.0g grasa, 42.0g carbs, 18.0g azúcar, 2.5g fibra
-- Aguacate: 160cal, 2.0g prot, 15.0g grasa, 9.0g carbs, 0.7g azúcar, 6.7g fibra
-- Ensalada verde mixta (100g): 20cal, 1.5g prot, 0.2g grasa, 3.5g carbs, 1.5g azúcar, 2.0g fibra
-- Tomate: 18cal, 0.9g prot, 0.2g grasa, 3.9g carbs, 2.6g azúcar, 1.2g fibra
-
-LEGUMINOSAS:
-- Frijol cocido: 127cal, 8.7g prot, 0.5g grasa, 22.0g carbs, 0.3g azúcar, 6.4g fibra
-- Lenteja cocida: 116cal, 9.0g prot, 0.4g grasa, 20.0g carbs, 1.8g azúcar, 7.9g fibra
-
-LÁCTEOS Y GRASAS:
-- Leche entera: 61cal, 3.2g prot, 3.3g grasa, 4.8g carbs, 5.0g azúcar, 0g fibra
-- Leche descremada: 35cal, 3.4g prot, 0.1g grasa, 5.0g carbs, 5.0g azúcar, 0g fibra
-- Yogurt natural: 60cal, 3.5g prot, 3.3g grasa, 4.7g carbs, 4.7g azúcar, 0g fibra
-- Yogurt griego: 97cal, 9.0g prot, 5.0g grasa, 3.6g carbs, 3.2g azúcar, 0g fibra
-- Queso mozzarella: 280cal, 28.0g prot, 17.0g grasa, 3.1g carbs, 1.0g azúcar, 0g fibra
-- Queso crema: 342cal, 6.0g prot, 34.0g grasa, 4.0g carbs, 3.0g azúcar, 0g fibra
-- Aceite/mantequilla (1 cda ~14g): 120cal, 0g prot, 14.0g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Mantequilla de maní (1 cda ~16g): 94cal, 4.0g prot, 8.0g grasa, 3.0g carbs, 1.0g azúcar, 1.0g fibra
-- Almendras: 579cal, 21.0g prot, 50.0g grasa, 22.0g carbs, 4.0g azúcar, 12.5g fibra
-
-REGLAS ESTRICTAS:
-1. Devuelve CADA alimento como un item separado en el array "items"
-2. Si hay datos de la base de datos (OpenFoodFacts), ÚSALOS con prioridad
-3. Si no, USA la tabla de referencia. Si no está en la tabla, estima basándote en el alimento más similar
-4. Calcula proporcionalmente: (cantidad_en_g / 100) × valores_por_100g
-5. Si no menciona cantidad, asume porción normal (ej: 1 huevo=50g, 1 banano=120g, 1 pechuga=150g, 1 taza arroz=160g)
-6. NO sumes los totales, yo los sumo en código
-7. VERIFICACIÓN OBLIGATORIA: cal ≈ (prot×4)+(fat×9)+(carbs×4). Tolerancia ±10%. Si no cuadra, AJUSTA
-8. "source": "db" si usaste OpenFoodFacts, "ref" si usaste la tabla, "est" si estimaste
-9. INCLUYE SIEMPRE "fiber" (fibra) para cada alimento
-10. USA 1 DECIMAL en todos los valores. NO redondees a entero
-11. NUNCA devuelvas 0 calorías para un alimento real. Si no conoces el alimento, estima conservadoramente
-12. Para carnes: diferencia entre crudo y cocido. Cocido pierde ~25% peso por agua. Los valores de la tabla son por 100g COCIDO
-
-Comida: "${foodText}"
-
-Responde SOLO JSON válido, sin texto extra ni explicaciones:
-{"items":[{"name":"60g avena","cal":233.4,"prot":7.9,"fat":3.9,"carbs":39.6,"sugar":0.6,"fiber":6.1,"source":"ref"},{"name":"1 banano","cal":105.0,"prot":1.3,"fat":0.4,"carbs":27.0,"sugar":14.0,"fiber":2.6,"source":"ref"}]}`;
-    const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
-    const jsonMatch=resp.match(/\{[\s\S]*\}/);
-    if(jsonMatch){
-      const parsed=JSON.parse(jsonMatch[0]);
-      /* Support both old format {cal,prot,...} and new {items:[...]} */
-      let items=parsed.items;
-      if(!items||!Array.isArray(items)){
-        items=[{name:foodText,cal:+parsed.cal||0,prot:+parsed.prot||0,fat:+parsed.fat||0,carbs:+parsed.carbs||0,sugar:+parsed.sugar||0,fiber:+parsed.fiber||0,source:"est"}];
+      /* If CalorieNinjas returns empty, try simpler query */
+      if(cnItems.length===0){
+        setLoadStatus("📊 Reintentando consulta...");
+        const simpleQuery=cleanQuery.replace(/cooked |grilled |fried |baked |steamed /gi,"");
+        cnItems=await callCalorieNinjas(simpleQuery,cnKey);
       }
-      /* JavaScript does the math - never trust AI sums */
-      const r1=v=>Math.round((+v||0)*10)/10;
-      /* Validate each item: recalculate cal from macros if it seems wrong */
-      items=items.map(it=>{
-        let c=+(it.cal)||0,p=+(it.prot)||0,f=+(it.fat)||0,cb=+(it.carbs)||0;
-        const expectedCal=(p*4)+(f*9)+(cb*4);
-        /* If AI returned 0 cal but has macros, recalculate */
-        if(c===0&&expectedCal>0)c=expectedCal;
-        /* If cal is way off from macro calculation (>50% diff), use macro-based cal */
-        if(c>0&&expectedCal>0&&Math.abs(c-expectedCal)/expectedCal>0.5)c=Math.round(expectedCal*10)/10;
-        return{...it,cal:c};
-      });
-      const food={cal:0,prot:0,fat:0,carbs:0,sugar:0,fiber:0,detail:""};
-      const lines=[];
-      items.forEach(it=>{
-        const c=r1(it.cal),p=r1(it.prot),f=r1(it.fat),cb=r1(it.carbs),s=r1(it.sugar),fb=r1(it.fiber);
-        food.cal+=c;food.prot+=p;food.fat+=f;food.carbs+=cb;food.sugar+=s;food.fiber+=fb;
-        const src=it.source==="db"?" 🔬":"";
-        lines.push(`• ${it.name}: ${c}cal, ${p}g P, ${f}g G, ${cb}g C, ${s}g S, ${fb}g F${src}`);
-      });
-      food.cal=r1(food.cal);food.prot=r1(food.prot);food.fat=r1(food.fat);food.carbs=r1(food.carbs);food.sugar=r1(food.sugar);food.fiber=r1(food.fiber);
-      food.detail=lines.join("\n");
-      if(food.cal>0||food.prot>0){setParsedFood(food)}else{setParsedFood(null);setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No pude calcular macros para "${foodText}". Intenta ser más específico (ej: "150g pechuga de pollo a la plancha con 200g arroz blanco")`}])}
-      if(food.cal>0||food.prot>0){
-        const dbNote=dbResults.length>0?`\n\n🔬 = dato de base de datos real (OpenFoodFacts)`:"";
-        setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Desglose:\n${lines.join("\n")}\n\n✅ Totales (calculados): ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S | ${food.fiber}g F${dbNote}`}]);
+
+      if(cnItems.length>0){
+        /* Step 3: JavaScript processes results */
+        const food={cal:0,prot:0,fat:0,carbs:0,sugar:0,fiber:0,detail:""};
+        const lines=[];
+        cnItems.forEach(it=>{
+          const c=r1(it.cal),p=r1(it.prot),f=r1(it.fat),cb=r1(it.carbs),s=r1(it.sugar),fb=r1(it.fiber);
+          food.cal+=c;food.prot+=p;food.fat+=f;food.carbs+=cb;food.sugar+=s;food.fiber+=fb;
+          const srvNote=it.serving>0?` (${it.serving}g)`:"";
+          lines.push(`• ${it.name}${srvNote}: ${c}cal, ${p}g P, ${f}g G, ${cb}g C, ${s}g S, ${fb}g F 📊`);
+        });
+        food.cal=r1(food.cal);food.prot=r1(food.prot);food.fat=r1(food.fat);food.carbs=r1(food.carbs);food.sugar=r1(food.sugar);food.fiber=r1(food.fiber);
+        food.detail=lines.join("\n");
+        if(food.cal>0||food.prot>0){
+          setParsedFood(food);
+          setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Desglose (datos USDA):\n${lines.join("\n")}\n\n✅ Totales: ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S | ${food.fiber}g F\n\n📊 = datos exactos de base de datos USDA`}]);
+        } else {
+          setParsedFood(null);
+          setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ CalorieNinjas no encontró "${foodText}". Intenta ser más específico (ej: "150g chicken breast with 200g rice")`}]);
+        }
+      } else {
+        /* CalorieNinjas returned nothing — fall through to AI-only mode */
+        setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No se encontró en USDA. Usando estimación con IA...`}]);
+        await analyzeFoodAIOnly(foodText);
       }
     } else {
-      setParsedFood(null);
-      setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ Error al procesar la respuesta. Intenta de nuevo con una descripción más clara (ej: "200g arroz con 150g pollo y ensalada")`}]);
+      /* ========== AI-ONLY MODE (no CalorieNinjas key) ========== */
+      await analyzeFoodAIOnly(foodText);
     }
   }catch(e){
-    if(e.message.startsWith("QUOTA|")){
+    if(e.message==="CN_KEY_INVALID"){
+      setMsgs(prev=>[...prev,{role:"ai",text:`❌ API Key de CalorieNinjas inválida\n\nRevisa tu key en calorieninjas.com/profile`}]);
+    }else if(e.message==="CN_RATE_LIMIT"){
+      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Rate limit de CalorieNinjas (10,000/mes)\n\nEspera un momento y reintenta 🔄`,retry:true}]);
+    }else if(e.message.startsWith("QUOTA|")){
       const isGroq=provider==="groq";
-      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`⏳ Rate limit de Groq\n\nEspera unos segundos y presiona 🔄`:`⏳ Rate limit de Google (429)\n\nSoluciones:\n1. Espera 2-3 min y presiona 🔄\n2. Si persiste: genera KEY NUEVA en aistudio.google.com/apikey\n3. O cambia a Groq (gratis, sin restricciones regionales)`,retry:true}]);
+      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`⏳ Rate limit de Groq\n\nEspera unos segundos y presiona 🔄`:`⏳ Rate limit de Google (429)\n\nEspera 2-3 min y presiona 🔄\nO cambia a Groq`,retry:true}]);
     }else if(e.message==="KEY_INVALID"){
       const isGroq=provider==="groq";
-      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`❌ API Key de Groq inválida\n\nRevisa tu key en console.groq.com`:`❌ API Key inválida\n\nVe a aistudio.google.com/apikey y genera una nueva.`}]);
+      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`❌ API Key de Groq inválida\n\nRevisa en console.groq.com`:`❌ API Key inválida\n\nGenera una nueva en aistudio.google.com/apikey`}]);
     }else if(e.message==="NO_PERMS"){
-      setMsgs(prev=>[...prev,{role:"ai",text:`❌ Sin permisos (403)\n\nHabilita "Generative Language API" en tu proyecto de Google Cloud.\nO cambia a Groq que no tiene esta restricción.`}]);
+      setMsgs(prev=>[...prev,{role:"ai",text:`❌ Sin permisos (403)\n\nHabilita "Generative Language API" en Google Cloud.\nO cambia a Groq.`}]);
     }else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
   }
   setLoading(false);setInput("");setLoadStatus("");
+};
+
+/* AI-only food analysis (fallback when no CalorieNinjas key) */
+const analyzeFoodAIOnly=async(foodText)=>{
+  const r1=v=>Math.round((+v||0)*10)/10;
+  const dbResults=await searchFoodDB(foodText);
+  const dbSection=dbResults.length>0?`
+DATOS REALES (OpenFoodFacts) - PRIORIDAD:
+${dbResults.map((r,i)=>`${i+1}. "${r.name}"${r.brand?" ("+r.brand+")":""} → por 100g: ${r.cal100}cal, ${r.prot100}g prot, ${r.fat100}g grasa, ${r.carbs100}g carbs, ${r.sugar100}g azúcar, ${r.fiber100||0}g fibra`).join("\n")}
+Selecciona el producto que mejor coincida y calcula proporcionalmente.
+`:`No hay datos en base de datos. Usa la tabla de referencia.`;
+  setLoadStatus("🤖 Calculando macros...");
+  const prompt=`Eres un nutricionista. Calcula macros EXACTOS. CADA alimento DEBE tener calorías > 0.
+
+${dbSection}
+REFERENCIA (por 100g COCIDO/listo):
+CARNES: Pechuga pollo:165cal,31P,3.6G,0C | Lomo res/fino:160cal,28P,5G,0C | Molida 90/10:196cal,26P,10G,0C | Molida 80/20:254cal,26P,17G,0C | Cerdo:190cal,27P,8.5G,0C | Salmón:208cal,20P,13G,0C | Tilapia:128cal,26P,2.7G,0C | Atún lata:116cal,25.5P,0.8G,0C | Camarón:99cal,24P,0.3G,0C | Huevo(50g):72cal,6.3P,4.8G,0.4C | Clara(33g):17cal,3.6P,0.1G,0.2C | Whey(30g):120cal,24P,1.5G,3C
+CARBOS: Arroz cocido:130cal,2.7P,0.3G,28C | Pasta cocida:158cal,5.8P,0.9G,31C | Avena cruda:389cal,13.2P,6.5G,66C | Papa:87cal,1.9P,0.1G,20C | Yuca:160cal,1.4P,0.3G,38C | Pan blanco(30g):80cal,2.7P,1G,15C | Arepa(100g):200cal,4P,2G,43C
+OTROS: Banano(120g):105cal,1.3P,0.4G,27C | Aguacate:160cal,2P,15G,9C | Frijol:127cal,8.7P,0.5G,22C | Leche:61cal,3.2P,3.3G,4.8C | Yogurt griego:97cal,9P,5G,3.6C | Aceite(14g):120cal,0P,14G,0C
+
+REGLAS: 1)Cada item separado en "items" 2)Proporcional: (g/100)×valores 3)Sin cantidad=porción normal 4)cal≈(P×4+G×9+C×4)±10% 5)1 decimal 6)Incluir fiber 7)Cocido por defecto
+
+Comida: "${foodText}"
+JSON puro: {"items":[{"name":"...","cal":0,"prot":0,"fat":0,"carbs":0,"sugar":0,"fiber":0,"source":"ref"}]}`;
+  const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
+  const jsonMatch=resp.match(/\{[\s\S]*\}/);
+  if(jsonMatch){
+    const parsed=JSON.parse(jsonMatch[0]);
+    let items=parsed.items;
+    if(!items||!Array.isArray(items)){
+      items=[{name:foodText,cal:+parsed.cal||0,prot:+parsed.prot||0,fat:+parsed.fat||0,carbs:+parsed.carbs||0,sugar:+parsed.sugar||0,fiber:+parsed.fiber||0,source:"est"}];
+    }
+    items=items.map(it=>{
+      let c=+(it.cal)||0,p=+(it.prot)||0,f=+(it.fat)||0,cb=+(it.carbs)||0;
+      const expectedCal=(p*4)+(f*9)+(cb*4);
+      if(c===0&&expectedCal>0)c=expectedCal;
+      if(c>0&&expectedCal>0&&Math.abs(c-expectedCal)/expectedCal>0.5)c=Math.round(expectedCal*10)/10;
+      return{...it,cal:c};
+    });
+    const food={cal:0,prot:0,fat:0,carbs:0,sugar:0,fiber:0,detail:""};
+    const lines=[];
+    items.forEach(it=>{
+      const c=r1(it.cal),p=r1(it.prot),f=r1(it.fat),cb=r1(it.carbs),s=r1(it.sugar),fb=r1(it.fiber);
+      food.cal+=c;food.prot+=p;food.fat+=f;food.carbs+=cb;food.sugar+=s;food.fiber+=fb;
+      const src=it.source==="db"?" 🔬":"";
+      lines.push(`• ${it.name}: ${c}cal, ${p}g P, ${f}g G, ${cb}g C, ${s}g S, ${fb}g F${src}`);
+    });
+    food.cal=r1(food.cal);food.prot=r1(food.prot);food.fat=r1(food.fat);food.carbs=r1(food.carbs);food.sugar=r1(food.sugar);food.fiber=r1(food.fiber);
+    food.detail=lines.join("\n");
+    if(food.cal>0||food.prot>0){
+      setParsedFood(food);
+      const dbNote=dbResults.length>0?"\n\n🔬 = dato OpenFoodFacts":"";
+      setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Desglose (estimación IA):\n${lines.join("\n")}\n\n✅ Totales: ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S | ${food.fiber}g F${dbNote}\n\n💡 Tip: Agrega tu CalorieNinjas API Key en ⚙ para datos exactos USDA`}]);
+    }else{
+      setParsedFood(null);
+      setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No pude calcular macros para "${foodText}". Sé más específico (ej: "150g pechuga con 200g arroz")`}]);
+    }
+  } else {
+    setParsedFood(null);
+    setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ Error al procesar. Intenta con descripción más clara (ej: "200g arroz con 150g pollo")`}]);
+  }
 };
 
 const addFoodToLog=()=>{
@@ -1276,7 +1304,7 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 <span style={{fontSize:"1.2rem"}}>🤖</span>
 <div style={{flex:1}}>
 <div style={{fontSize:"0.82rem",fontWeight:700}}>AI Coach</div>
-<div style={{fontSize:"0.55rem",color:C.t3}}>{provider==="groq"?"Groq / Llama 3 (gratis)":"Gemini (15 req/min)"} · {mode==="food"?"Analizar comida":"Consulta libre"}</div>
+<div style={{fontSize:"0.55rem",color:C.t3}}>{provider==="groq"?"Groq / Llama 3 (gratis)":"Gemini (15 req/min)"} · {mode==="food"?(S.calorieNinjasKey?"🍽️ Comida (USDA)":"🍽️ Comida (IA)"):"💬 Consulta libre"}</div>
 </div>
 <button onClick={()=>setShowKey(!showKey)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"0.7rem"}}>🔑</button>
 <button onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"1rem"}}>✕</button>
@@ -1416,6 +1444,18 @@ return(<Mdl title="⚙ Configuración" onClose={onClose} ch={<div style={{displa
 </div>
 <div style={{fontSize:"0.58rem",color:C.t3,marginTop:4}}>Obtén tu key gratis en <a href="https://console.groq.com/keys" target="_blank" style={{color:C.cyan}}>console.groq.com/keys</a> — Sin restricciones regionales</div>
 </div>}
+<div style={{marginTop:10,padding:"10px 12px",background:C.bg2,borderRadius:8,border:`1px solid ${C.b1}`}}>
+<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+<span style={{fontSize:"0.65rem",fontWeight:600,color:C.orange}}>📊 CalorieNinjas (macros exactos USDA)</span>
+<span style={{fontSize:"0.5rem",padding:"2px 6px",borderRadius:4,background:C.green+"25",color:C.green,fontWeight:600}}>RECOMENDADO</span>
+</div>
+<div style={{display:"flex",alignItems:"center",gap:10}}>
+<span style={{flex:1,fontSize:"0.75rem",color:C.t2}}>API Key</span>
+<input style={{...z.inpM,maxWidth:200}} type="password" value={f.calorieNinjasKey||""} onChange={e=>setF({...f,calorieNinjasKey:e.target.value})} placeholder="Tu API key..."/>
+</div>
+<div style={{fontSize:"0.55rem",color:C.t3,marginTop:4}}>Gratis (10,000/mes). Obtén tu key en <a href="https://calorieninjas.com/profile" target="_blank" style={{color:C.cyan}}>calorieninjas.com/profile</a></div>
+<div style={{fontSize:"0.55rem",color:C.t3,marginTop:2}}>Con esta key, los macros vienen de la base de datos USDA (exactos) en vez de estimaciones de IA</div>
+</div>
 <div style={{marginTop:10}}>
 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
 <span style={{fontSize:"0.8rem",color:C.t2}}>Prompt personalizado</span>
