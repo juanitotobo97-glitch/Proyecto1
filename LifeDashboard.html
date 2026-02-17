@@ -240,14 +240,15 @@ const S=D?.settings||DEF_S;const dayTypes=D?.dayTypes||DEF_DT;const fl=D?.fitnes
 const getDT=id=>dayTypes.find(t=>t.id===id)||dayTypes[0];
 /* Compliance: P,G,C,S use global intervals; K (cal) uses per-day-type calMin/calMax */
 const chkComp=(e)=>{
-  const pr=S.protRange||[153,999],fr=S.fatRange||[0,75],cr=S.carbRange||[0,999],sr=S.sugarRange||[0,40];
+  const pr=S.protRange||[153,999],fr=S.fatRange||[0,75],cr=S.carbRange||[0,999],sr=S.sugarRange||[0,40],fbr=S.fiberRange||[20,999];
   const dt=getDT(e.dayType);
   const p=(+e.prot||0)>=pr[0]&&(+e.prot||0)<=pr[1]?1:0;
   const g=(+e.fat||0)>=fr[0]&&(+e.fat||0)<=fr[1]?1:0;
   const c=(+e.carbs||0)>=cr[0]&&(+e.carbs||0)<=cr[1]?1:0;
   const su=(+e.sugar||0)>=sr[0]&&(+e.sugar||0)<=sr[1]?1:0;
+  const fb=(+e.fiber||0)>=fbr[0]&&(+e.fiber||0)<=fbr[1]?1:0;
   const k=(+e.cal||0)>=(dt.calMin||0)&&(+e.cal||0)<=(dt.calMax||99999)?1:0;
-  return{p,g,c,s:su,k,day:p+g+c+su+k>=4?1:0};
+  return{p,g,c,s:su,fb,k,day:p+g+c+su+fb+k>=4?1:0};
 };
 
 const latest=fl.length>0?fl[fl.length-1]:{weight:S.startWeight,waist:S.startWaist};
@@ -300,6 +301,7 @@ const FMET=[
 {id:"fat",lb:"Prom Grasa",em:"🥑",unit:"g",color:C.red,calc:d=>avg(d.filter(e=>+e.fat>0),"fat"),delta:null},
 {id:"carbs",lb:"Prom Carbos",em:"🍚",unit:"g",color:C.green,calc:d=>avg(d.filter(e=>+e.carbs>0),"carbs"),delta:null},
 {id:"sugar",lb:"Prom Azúcar",em:"🍬",unit:"g",color:C.pink,calc:d=>avg(d.filter(e=>+e.sugar>0),"sugar"),delta:null},
+{id:"fiber",lb:"Prom Fibra",em:"🌾",unit:"g",color:C.amber,calc:d=>avg(d.filter(e=>+e.fiber>0),"fiber"),delta:null},
 {id:"sleep",lb:"Prom Sueño",em:"😴",unit:"hrs",color:C.cyan,calc:d=>{const s=d.filter(e=>+e.sleep>0);return s.length?(s.reduce((a,x)=>a+(+x.sleep||0),0)/s.length).toFixed(1):"—"},delta:null}
 ];
 const wPts=ffl.filter(e=>e.weight).map(e=>({v:+e.weight,label:e.date.slice(5)}));const wAvg=movAvg(ffl.filter(e=>e.weight),"weight");
@@ -325,12 +327,12 @@ return(<Mdl title={idx!==null?"Editar Registro":"📊 Nuevo Registro"} onClose={
 </div>}/>)};
 
 const CompEditor=({onClose})=>{
-const[f,setF]=useState({protRange:[...(S.protRange||[153,999])],fatRange:[...(S.fatRange||[0,75])],carbRange:[...(S.carbRange||[0,999])],sugarRange:[...(S.sugarRange||[0,40])]});
+const[f,setF]=useState({protRange:[...(S.protRange||[153,999])],fatRange:[...(S.fatRange||[0,75])],carbRange:[...(S.carbRange||[0,999])],sugarRange:[...(S.sugarRange||[0,40])],fiberRange:[...(S.fiberRange||[20,999])]});
 const[dtRanges,setDtRanges]=useState(dayTypes.map(t=>({id:t.id,name:t.name,emoji:t.emoji,calMin:t.calMin||0,calMax:t.calMax||9999})));
 const updDR=(i,k,v)=>{const n=[...dtRanges];n[i]={...n[i],[k]:+v};setDtRanges(n)};
 return(<Mdl title="⚙ Intervalos de Compliance" onClose={onClose} wide ch={<div>
-<p style={{fontSize:"0.76rem",color:C.t2,marginBottom:12}}>P✓ G✓ C✓ S✓ K✓ = valor dentro del intervalo. DÍA✓ = 4 de 5 checks. K✓ = calorías dentro del rango del tipo de día.</p>
-{[["Proteína (P✓)","protRange",C.blue],["Grasas (G✓)","fatRange",C.red],["Carbos (C✓)","carbRange",C.green],["Azúcar (S✓)","sugarRange",C.pink]].map(([l,k,c])=>(<div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}><span style={{width:120,fontSize:"0.78rem",color:c,fontWeight:600}}>{l}</span><span style={{fontSize:"0.7rem",color:C.t3}}>Min:</span><input style={{...z.inpM,maxWidth:75}} type="number" value={f[k][0]} onChange={e=>{const n=[...f[k]];n[0]=+e.target.value;setF({...f,[k]:n})}}/><span style={{fontSize:"0.7rem",color:C.t3}}>Max:</span><input style={{...z.inpM,maxWidth:75}} type="number" value={f[k][1]} onChange={e=>{const n=[...f[k]];n[1]=+e.target.value;setF({...f,[k]:n})}}/></div>))}
+<p style={{fontSize:"0.76rem",color:C.t2,marginBottom:12}}>P✓ G✓ C✓ S✓ F✓ K✓ = valor dentro del intervalo. DÍA✓ = 4 de 6 checks. K✓ = calorías dentro del rango del tipo de día.</p>
+{[["Proteína (P✓)","protRange",C.blue],["Grasas (G✓)","fatRange",C.red],["Carbos (C✓)","carbRange",C.green],["Azúcar (S✓)","sugarRange",C.pink],["Fibra (F✓)","fiberRange",C.amber]].map(([l,k,c])=>(<div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}><span style={{width:120,fontSize:"0.78rem",color:c,fontWeight:600}}>{l}</span><span style={{fontSize:"0.7rem",color:C.t3}}>Min:</span><input style={{...z.inpM,maxWidth:75}} type="number" value={f[k][0]} onChange={e=>{const n=[...f[k]];n[0]=+e.target.value;setF({...f,[k]:n})}}/><span style={{fontSize:"0.7rem",color:C.t3}}>Max:</span><input style={{...z.inpM,maxWidth:75}} type="number" value={f[k][1]} onChange={e=>{const n=[...f[k]];n[1]=+e.target.value;setF({...f,[k]:n})}}/></div>))}
 <div style={{...z.lb,marginTop:14}}>🔥 Rango Calorías (K✓) por tipo de día</div>
 {dtRanges.map((dr,i)=>(<div key={dr.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}><span style={{width:130,fontSize:"0.78rem",fontWeight:500}}>{dr.emoji} {dr.name}</span><span style={{fontSize:"0.7rem",color:C.t3}}>Min:</span><input style={{...z.inpM,maxWidth:80}} type="number" value={dr.calMin} onChange={e=>updDR(i,"calMin",e.target.value)}/><span style={{fontSize:"0.7rem",color:C.t3}}>Max:</span><input style={{...z.inpM,maxWidth:80}} type="number" value={dr.calMax} onChange={e=>updDR(i,"calMax",e.target.value)}/></div>))}
 <div style={{display:"flex",gap:8,marginTop:14}}><button style={z.btn(true)} onClick={()=>{const ndt=dayTypes.map(t=>{const r=dtRanges.find(d=>d.id===t.id);return r?{...t,calMin:r.calMin,calMax:r.calMax}:t});sv({...D,settings:{...S,...f},dayTypes:ndt});onClose()}}>Guardar</button><button style={z.btn(false)} onClick={onClose}>Cancelar</button></div>
@@ -340,7 +342,7 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
 <div><div style={{fontSize:"1.3rem",fontWeight:700}}>🏋️ Mini-Cut Tracker</div><div style={{fontSize:"0.75rem",color:C.t3}}>{S.planGoal}</div></div>
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}><button style={z.btn(true)} onClick={()=>setFlM("new")}>+ Registro</button><button style={z.btnS(false)} onClick={()=>setCompM(true)}>⚙ Intervalos</button></div></div>
-<G3>{[["🔥 Cal",activeGP.cal,"kcal",C.orange,avg(ffl.filter(e=>+e.cal>0),"cal")],["🥩 Prot",activeGP.prot+"g","g",C.blue,avg(ffl.filter(e=>+e.prot>0),"prot")+"g"],["🥑 Grasa",activeGP.fat+"g","g",C.red,avg(ffl.filter(e=>+e.fat>0),"fat")+"g"],["🍚 Carbos",activeGP.carbs+"g","g",C.green,avg(ffl.filter(e=>+e.carbs>0),"carbs")+"g"],["🍬 Azúcar","≤"+activeGP.sugar+"g","g",C.pink,avg(ffl.filter(e=>+e.sugar>0),"sugar")+"g"],["💪 Entrenos",activeGP.trainingPerWeek+"x","sem",C.lime,""]].map(([l,v,u,c,real],i)=><div key={i} style={z.card}><div style={{...z.lb,color:c}}>{l} <span style={{fontSize:"0.5rem",color:C.t3}}>({activeGP.name})</span></div><div style={{fontFamily:"monospace",fontSize:"1.1rem",fontWeight:700}}>{v}</div>{real&&<div style={{fontSize:"0.6rem",color:C.t2,marginTop:2}}>Real: {real}</div>}<div style={{fontSize:"0.6rem",color:C.t3}}>{u}</div></div>)}</G3>
+<G3>{[["🔥 Cal",activeGP.cal,"kcal",C.orange,avg(ffl.filter(e=>+e.cal>0),"cal")],["🥩 Prot",activeGP.prot+"g","g",C.blue,avg(ffl.filter(e=>+e.prot>0),"prot")+"g"],["🥑 Grasa",activeGP.fat+"g","g",C.red,avg(ffl.filter(e=>+e.fat>0),"fat")+"g"],["🍚 Carbos",activeGP.carbs+"g","g",C.green,avg(ffl.filter(e=>+e.carbs>0),"carbs")+"g"],["🍬 Azúcar","≤"+activeGP.sugar+"g","g",C.pink,avg(ffl.filter(e=>+e.sugar>0),"sugar")+"g"],["🌾 Fibra",(activeGP.fiber||25)+"g","g",C.amber,avg(ffl.filter(e=>+e.fiber>0),"fiber")+"g"],["💪 Entrenos",activeGP.trainingPerWeek+"x","sem",C.lime,""]].map(([l,v,u,c,real],i)=><div key={i} style={z.card}><div style={{...z.lb,color:c}}>{l} <span style={{fontSize:"0.5rem",color:C.t3}}>({activeGP.name})</span></div><div style={{fontFamily:"monospace",fontSize:"1.1rem",fontWeight:700}}>{v}</div>{real&&<div style={{fontSize:"0.6rem",color:C.t2,marginTop:2}}>Real: {real}</div>}<div style={{fontSize:"0.6rem",color:C.t3}}>{u}</div></div>)}</G3>
 <div style={{...z.card,padding:"12px 16px",marginTop:4}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{...z.lb,marginBottom:0}}>Progreso</span><span style={{fontFamily:"monospace",fontSize:"0.72rem",color:C.lime}}>Día {Math.min(dayN,totalDays)}/{totalDays} — {prog}%</span></div><div style={{width:"100%",height:7,background:C.bg3,borderRadius:100,overflow:"hidden"}}><div style={{height:"100%",borderRadius:100,width:`${prog}%`,background:`linear-gradient(90deg,${C.lime},#8aff00)`}}/></div></div>
 <div style={{...z.card,padding:"10px 14px",marginTop:4,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
 <span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
@@ -366,21 +368,21 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 </div>)})}</G3>
 <G2><div style={z.card}><div style={{display:"flex",justifyContent:"space-between"}}><div style={z.lb}>Peso</div><div style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></div></div><Chart pts={wPts} pts2={wAvg} color={C.lime} color2={C.orange}/></div>
 <div style={z.card}><div style={z.lb}>Cintura</div><Chart pts={ffl.filter(e=>e.waist).map(e=>({v:+e.waist,label:e.date.slice(5)}))} color={C.cyan}/></div></G2>
-<div style={z.card}><div style={z.lb}>🎯 Macros por Tipo de Día</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:500}}><thead><tr>{["Tipo","Cal","Prot","Carbos","Grasa","Azúcar","Rango Cal"].map(h=><th key={h} style={z.th}>{h}</th>)}</tr></thead>
-<tbody>{dayTypes.map(t=>(<tr key={t.id}><td style={{...z.td,fontWeight:600}}>{t.emoji} {t.name}</td><td style={{...z.td,fontFamily:"monospace"}}>{t.cal}</td><td style={{...z.td,fontFamily:"monospace"}}>{t.prot}g</td><td style={{...z.td,fontFamily:"monospace"}}>{t.carbs}g</td><td style={{...z.td,fontFamily:"monospace"}}>{t.fat}g</td><td style={{...z.td,fontFamily:"monospace"}}>≤{t.sugar}g</td><td style={{...z.td,fontFamily:"monospace",color:C.orange}}>{t.calMin}–{t.calMax}</td></tr>))}</tbody></table></div></div>
+<div style={z.card}><div style={z.lb}>🎯 Macros por Tipo de Día</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:550}}><thead><tr>{["Tipo","Cal","Prot","Carbos","Grasa","Azúcar","Fibra","Rango Cal"].map(h=><th key={h} style={z.th}>{h}</th>)}</tr></thead>
+<tbody>{dayTypes.map(t=>(<tr key={t.id}><td style={{...z.td,fontWeight:600}}>{t.emoji} {t.name}</td><td style={{...z.td,fontFamily:"monospace"}}>{t.cal}</td><td style={{...z.td,fontFamily:"monospace"}}>{t.prot}g</td><td style={{...z.td,fontFamily:"monospace"}}>{t.carbs}g</td><td style={{...z.td,fontFamily:"monospace"}}>{t.fat}g</td><td style={{...z.td,fontFamily:"monospace"}}>≤{t.sugar}g</td><td style={{...z.td,fontFamily:"monospace",color:C.amber}}>{t.fiber||0}g</td><td style={{...z.td,fontFamily:"monospace",color:C.orange}}>{t.calMin}–{t.calMax}</td></tr>))}</tbody></table></div></div>
 <div style={{...z.card,padding:"10px 16px",display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
 <span style={{...z.lb,marginBottom:0}}>Intervalos:</span>
-{[["P✓",S.protRange||[153,999],C.blue],["G✓",S.fatRange||[0,75],C.red],["C✓",S.carbRange||[0,999],C.green],["S✓",S.sugarRange||[0,40],C.pink]].map(([l,r,c])=><span key={l} style={{fontSize:"0.68rem",color:c,fontWeight:600}}>{l}:{r[0]}–{r[1]}g</span>)}
+{[["P✓",S.protRange||[153,999],C.blue],["G✓",S.fatRange||[0,75],C.red],["C✓",S.carbRange||[0,999],C.green],["S✓",S.sugarRange||[0,40],C.pink],["F✓",S.fiberRange||[20,999],C.amber]].map(([l,r,c])=><span key={l} style={{fontSize:"0.68rem",color:c,fontWeight:600}}>{l}:{r[0]}–{r[1]}g</span>)}
 <span style={{fontSize:"0.68rem",color:C.orange,fontWeight:600}}>K✓: por tipo</span>
-<span style={{fontSize:"0.68rem",color:C.t3}}>DÍA✓=4/5</span></div>
+<span style={{fontSize:"0.68rem",color:C.t3}}>DÍA✓=4/6</span></div>
 <div style={z.card}><div style={z.lb}>📊 Progreso Semanal</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:750}}>
-<thead><tr>{["Fecha","Tipo","Peso","Cintura","Cal","Prot","Grasa","Carbos","Azúcar","Pasos","P✓","G✓","C✓","S✓","K✓","DÍA"].map(h=><th key={h} style={{...z.th,padding:"5px 3px"}}>{h}</th>)}</tr></thead>
+<thead><tr>{["Fecha","Tipo","Peso","Cintura","Cal","Prot","Grasa","Carbos","Azúcar","Fibra","Pasos","P✓","G✓","C✓","S✓","F✓","K✓","DÍA"].map(h=><th key={h} style={{...z.th,padding:"5px 3px"}}>{h}</th>)}</tr></thead>
 <tbody>{ffl.map((e,i)=>{const oi=fl.indexOf(e);const comp=chkComp(e);const dt=getDT(e.dayType);return(<tr key={oi} style={{cursor:"pointer"}} onClick={()=>setFlM(oi)}>
 <td style={{...z.td,fontFamily:"monospace",fontSize:"0.68rem"}}>{e.date.slice(5)}</td><td style={z.td}>{dt.emoji}</td>
 <td style={{...z.td,fontFamily:"monospace",fontWeight:600}}>{e.weight||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.waist||"—"}</td>
-<td style={{...z.td,fontFamily:"monospace"}}>{e.cal||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.prot||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.fat||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.carbs||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.sugar||"—"}</td>
+<td style={{...z.td,fontFamily:"monospace"}}>{e.cal||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.prot||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.fat||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.carbs||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.sugar||"—"}</td><td style={{...z.td,fontFamily:"monospace",color:C.amber}}>{e.fiber||"—"}</td>
 <td style={{...z.td,fontFamily:"monospace"}}>{(+e.steps||0).toLocaleString()}</td>
-{[comp.p,comp.g,comp.c,comp.s,comp.k].map((v,j)=><td key={j} style={{...z.td,textAlign:"center"}}><span style={{color:v?C.green:C.red,fontWeight:700}}>{v?"✓":"✗"}</span></td>)}
+{[comp.p,comp.g,comp.c,comp.s,comp.fb,comp.k].map((v,j)=><td key={j} style={{...z.td,textAlign:"center"}}><span style={{color:v?C.green:C.red,fontWeight:700}}>{v?"✓":"✗"}</span></td>)}
 <td style={{...z.td,textAlign:"center"}}><span style={{color:comp.day?C.green:C.red,fontWeight:800,fontSize:"0.85rem"}}>{comp.day?"✓":"✗"}</span></td>
 </tr>)})}</tbody></table></div></div>
 {ffl.filter(e=>e.notes).length>0&&<div style={z.card}><div style={z.lb}>📝 Notas</div>{ffl.filter(e=>e.notes).slice(-5).reverse().map((e,i)=>(<div key={i} style={{padding:"7px 0",borderBottom:`1px solid ${C.b1}`}}><span style={{fontFamily:"monospace",fontSize:"0.65rem",color:C.t3}}>{e.date}</span> {getDT(e.dayType).emoji}<div style={{fontSize:"0.8rem",color:C.t1,marginTop:3}}>{e.notes}</div></div>))}</div>}
@@ -578,6 +580,7 @@ const TREND_METRICS=[
 {id:"fat",lb:"Grasas",key:"fat",unit:"g",color:C.red,filter:e=>+e.fat>0},
 {id:"carbs",lb:"Carbos",key:"carbs",unit:"g",color:C.cyan,filter:e=>+e.carbs>0},
 {id:"sugar",lb:"Azúcar",key:"sugar",unit:"g",color:C.pink,filter:e=>+e.sugar>0},
+{id:"fiber",lb:"Fibra",key:"fiber",unit:"g",color:C.amber,filter:e=>+e.fiber>0},
 {id:"waist",lb:"Cintura",key:"waist",unit:"cm",color:C.purple,filter:e=>e.waist},
 {id:"sleep",lb:"Sueño",key:"sleep",unit:"hrs",color:C.cyan,filter:e=>+e.sleep>0}
 ];
@@ -633,13 +636,14 @@ return(<div key={ci} style={z.card}>
 /* === WEEKLY REPORT === */
 const RPT_METRICS=[
 {id:"weight",lb:"Δ Peso",em:"⚖️",unit:"kg",color:C.lime,calc:d=>{const wS2=d.length>0?+d[0].weight:S.startWeight;const wE2=d.length>0?+d[d.length-1].weight:S.startWeight;return(wS2-wE2).toFixed(1)},txt:d=>{const wS2=d.length>0?+d[0].weight:S.startWeight;const wE2=d.length>0?+d[d.length-1].weight:S.startWeight;return`Peso: ${wS2} → ${wE2} kg (${(wS2-wE2).toFixed(1)} kg)`}},
-{id:"cal",lb:"Prom Cal",em:"🔥",unit:"kcal",color:C.orange,calc:d=>{const f=d.filter(e=>+e.cal>0);return f.length?(f.reduce((a,e)=>a+(+e.cal),0)/f.length).toFixed(0):"0"},txt:d=>`Cal promedio: ${RPT_METRICS.find(m=>m.id==="cal").calc(d)} kcal/día`},
-{id:"prot",lb:"Prom Prot",em:"🥩",unit:"g",color:C.blue,calc:d=>{const f=d.filter(e=>+e.prot>0);return f.length?(f.reduce((a,e)=>a+(+e.prot),0)/f.length).toFixed(0):"0"},txt:d=>`Prot promedio: ${RPT_METRICS.find(m=>m.id==="prot").calc(d)}g/día`},
+{id:"cal",lb:"Prom Cal",em:"🔥",unit:"kcal",color:C.orange,calc:d=>{const f=d.filter(e=>+e.cal>0);return f.length?(f.reduce((a,e)=>a+(+e.cal),0)/f.length).toFixed(1):"0"},txt:d=>`Cal promedio: ${RPT_METRICS.find(m=>m.id==="cal").calc(d)} kcal/día`},
+{id:"prot",lb:"Prom Prot",em:"🥩",unit:"g",color:C.blue,calc:d=>{const f=d.filter(e=>+e.prot>0);return f.length?(f.reduce((a,e)=>a+(+e.prot),0)/f.length).toFixed(1):"0"},txt:d=>`Prot promedio: ${RPT_METRICS.find(m=>m.id==="prot").calc(d)}g/día`},
 {id:"comp",lb:"Compliance",em:"✓",unit:"días",color:C.green,calc:d=>d.filter(e=>chkComp(e).day).length+"/"+d.length,txt:d=>`Días compliance: ${d.filter(e=>chkComp(e).day).length}/${d.length}`},
 {id:"steps",lb:"Prom Pasos",em:"👟",unit:"pasos",color:C.purple,calc:d=>{const f=d.filter(e=>+e.steps>0);return f.length?(f.reduce((a,e)=>a+(+e.steps),0)/f.length).toFixed(0):"0"},txt:d=>`Pasos promedio: ${(+RPT_METRICS.find(m=>m.id==="steps").calc(d)).toLocaleString()}`},
-{id:"fat",lb:"Prom Grasa",em:"🥑",unit:"g",color:C.red,calc:d=>{const f=d.filter(e=>+e.fat>0);return f.length?(f.reduce((a,e)=>a+(+e.fat),0)/f.length).toFixed(0):"0"},txt:d=>`Grasa promedio: ${RPT_METRICS.find(m=>m.id==="fat").calc(d)}g/día`},
-{id:"carbs",lb:"Prom Carbos",em:"🍚",unit:"g",color:C.cyan,calc:d=>{const f=d.filter(e=>+e.carbs>0);return f.length?(f.reduce((a,e)=>a+(+e.carbs),0)/f.length).toFixed(0):"0"},txt:d=>`Carbos promedio: ${RPT_METRICS.find(m=>m.id==="carbs").calc(d)}g/día`},
-{id:"sugar",lb:"Prom Azúcar",em:"🍬",unit:"g",color:C.pink,calc:d=>{const f=d.filter(e=>+e.sugar>0);return f.length?(f.reduce((a,e)=>a+(+e.sugar),0)/f.length).toFixed(0):"0"},txt:d=>`Azúcar promedio: ${RPT_METRICS.find(m=>m.id==="sugar").calc(d)}g/día`},
+{id:"fat",lb:"Prom Grasa",em:"🥑",unit:"g",color:C.red,calc:d=>{const f=d.filter(e=>+e.fat>0);return f.length?(f.reduce((a,e)=>a+(+e.fat),0)/f.length).toFixed(1):"0"},txt:d=>`Grasa promedio: ${RPT_METRICS.find(m=>m.id==="fat").calc(d)}g/día`},
+{id:"carbs",lb:"Prom Carbos",em:"🍚",unit:"g",color:C.cyan,calc:d=>{const f=d.filter(e=>+e.carbs>0);return f.length?(f.reduce((a,e)=>a+(+e.carbs),0)/f.length).toFixed(1):"0"},txt:d=>`Carbos promedio: ${RPT_METRICS.find(m=>m.id==="carbs").calc(d)}g/día`},
+{id:"sugar",lb:"Prom Azúcar",em:"🍬",unit:"g",color:C.pink,calc:d=>{const f=d.filter(e=>+e.sugar>0);return f.length?(f.reduce((a,e)=>a+(+e.sugar),0)/f.length).toFixed(1):"0"},txt:d=>`Azúcar promedio: ${RPT_METRICS.find(m=>m.id==="sugar").calc(d)}g/día`},
+{id:"fiber",lb:"Prom Fibra",em:"🌾",unit:"g",color:C.amber,calc:d=>{const f=d.filter(e=>+e.fiber>0);return f.length?(f.reduce((a,e)=>a+(+e.fiber),0)/f.length).toFixed(1):"0"},txt:d=>`Fibra promedio: ${RPT_METRICS.find(m=>m.id==="fiber").calc(d)}g/día`},
 {id:"sleep",lb:"Prom Sueño",em:"😴",unit:"hrs",color:C.cyan,calc:d=>{const f=d.filter(e=>+e.sleep>0);return f.length?(f.reduce((a,e)=>a+(+e.sleep),0)/f.length).toFixed(1):"—"},txt:d=>`Sueño promedio: ${RPT_METRICS.find(m=>m.id==="sleep").calc(d)} hrs`}
 ];
 const ReportPage=()=>{
@@ -710,17 +714,20 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 const[goalsEdit,setGoalsEdit]=useState(false);
 const[gf,setGf]=useState(null);
 const wkFl=fl.filter(e=>{const w=getWk();return w.includes(e.date)});
-const realCal=wkFl.length>0?Math.round(wkFl.filter(e=>+e.cal>0).reduce((a,x)=>a+(+x.cal||0),0)/wkFl.filter(e=>+e.cal>0).length):0;
-const realProt=wkFl.length>0?Math.round(wkFl.filter(e=>+e.prot>0).reduce((a,x)=>a+(+x.prot||0),0)/wkFl.filter(e=>+e.prot>0).length):0;
-const realFat=wkFl.length>0?Math.round(wkFl.filter(e=>+e.fat>0).reduce((a,x)=>a+(+x.fat||0),0)/wkFl.filter(e=>+e.fat>0).length):0;
-const realCarbs=wkFl.length>0?Math.round(wkFl.filter(e=>+e.carbs>0).reduce((a,x)=>a+(+x.carbs||0),0)/wkFl.filter(e=>+e.carbs>0).length):0;
-const realSugar=wkFl.length>0?Math.round(wkFl.filter(e=>+e.sugar>0).reduce((a,x)=>a+(+x.sugar||0),0)/wkFl.filter(e=>+e.sugar>0).length):0;
+const r1d=(arr,k)=>{const f=arr.filter(e=>+e[k]>0);return f.length>0?Math.round(f.reduce((a,x)=>a+(+x[k]||0),0)/f.length*10)/10:0};
+const realCal=r1d(wkFl,"cal");
+const realProt=r1d(wkFl,"prot");
+const realFat=r1d(wkFl,"fat");
+const realCarbs=r1d(wkFl,"carbs");
+const realSugar=r1d(wkFl,"sugar");
+const realFiber=r1d(wkFl,"fiber");
 const goalRows=[
 {lb:"Calorías",key:"cal",em:"🔥",c:C.orange,unit:"kcal",goal:activeGP.cal,real:realCal},
 {lb:"Proteína",key:"prot",em:"🥩",c:C.blue,unit:"g",goal:activeGP.prot,real:realProt},
 {lb:"Grasas",key:"fat",em:"🥑",c:C.red,unit:"g",goal:activeGP.fat,real:realFat},
 {lb:"Carbos",key:"carbs",em:"🍚",c:C.green,unit:"g",goal:activeGP.carbs,real:realCarbs},
 {lb:"Azúcar máx",key:"sugar",em:"🍬",c:C.pink,unit:"g",goal:activeGP.sugar,real:realSugar},
+{lb:"Fibra",key:"fiber",em:"🌾",c:C.amber,unit:"g",goal:activeGP.fiber||25,real:realFiber},
 {lb:"Entrenos/sem",key:"trainingPerWeek",em:"💪",c:C.lime,unit:"x",goal:activeGP.trainingPerWeek,real:""}
 ];
 return(<div style={z.card}>
@@ -742,7 +749,7 @@ return(<div style={z.card}>
 {goalsEdit&&gf&&<div style={{marginTop:12,padding:14,background:C.bg2,borderRadius:10,border:`1px solid ${C.b1}`}}>
 <div style={{fontSize:"0.78rem",fontWeight:600,marginBottom:10}}>Editar perfil: {gf.name}</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8,marginBottom:10}}>
-{[["Calorías","cal"],["Proteína","prot"],["Grasas","fat"],["Carbos","carbs"],["Azúcar máx","sugar"],["Entrenos/sem","trainingPerWeek"]].map(([l,k])=>(<div key={k}><div style={{fontSize:"0.58rem",color:C.t3,marginBottom:3}}>{l}</div><input style={z.inpM} type="number" value={gf[k]} onChange={e=>setGf({...gf,[k]:validateGoal(k,e.target.value)})}/></div>))}
+{[["Calorías","cal"],["Proteína","prot"],["Grasas","fat"],["Carbos","carbs"],["Azúcar máx","sugar"],["Fibra","fiber"],["Entrenos/sem","trainingPerWeek"]].map(([l,k])=>(<div key={k}><div style={{fontSize:"0.58rem",color:C.t3,marginBottom:3}}>{l}</div><input style={z.inpM} type="number" value={gf[k]} onChange={e=>setGf({...gf,[k]:validateGoal(k,e.target.value)})}/></div>))}
 </div>
 <div style={{display:"flex",gap:6}}>
 <button style={z.btn(true)} onClick={()=>{updGoalProfile(activeGP.id,gf);setGoalsEdit(false)}}>Guardar</button>
@@ -936,17 +943,66 @@ const buildContext=()=>{
   const gp=activeGP;
   const customPrompt=S.aiPrompt?`\n\nINSTRUCCIONES PERSONALIZADAS DEL USUARIO:\n${S.aiPrompt}`:"";
   const habitsCtx=habits.filter(h=>h.active).map(h=>`${h.emoji} ${h.name} (${h.meta})`).join(", ");
-  const projCtx=projects.map(p=>`${p.name}: ${p.progress}% ${p.status}`).join(", ");
-  return`CONTEXTO DEL USUARIO:
+
+  /* Projects with tasks detail */
+  const projCtx=projects.map(p=>{
+    const tasksDone=p.tasks?p.tasks.filter(t=>t.s==="done").length:0;
+    const tasksTotal=p.tasks?p.tasks.length:0;
+    const pendingTasks=p.tasks?p.tasks.filter(t=>t.s!=="done").map(t=>`  - ${t.t} (${t.s==="progress"?"en progreso":"pendiente"})`).join("\n"):"";
+    return`  * ${p.name}: ${p.progress}% | ${p.status} | Prioridad: ${p.priority} | Categoría: ${p.category}${p.deadline?" | Deadline: "+p.deadline:""}\n    Tareas: ${tasksDone}/${tasksTotal} completadas${pendingTasks?"\n"+pendingTasks:""}${p.notes?"\n    Notas: "+p.notes:""}`;
+  }).join("\n");
+
+  /* Books detail */
+  const booksCtx=books.map(b=>{
+    const status=b.status==="reading"?"Leyendo":b.status==="done"?"Terminado":"En cola";
+    return`  * "${b.title}" (${b.author}) — ${status}${b.progress>0?", "+b.progress+"%":""}${b.rating?" ★"+b.rating:""}${b.genre?" ["+b.genre+"]":""}`;
+  }).join("\n");
+
+  /* Habits with weekly tracking */
+  const habitsDetail=habits.filter(h=>h.active).map(h=>{
+    const wk=getWk();
+    const done=wk.filter(d=>(D.habitWeekly||{})[`${h.id}_${d}`]).length;
+    return`  * ${h.emoji} ${h.name}: ${h.meta} — ${done}/7 esta semana`;
+  }).join("\n");
+
+  /* Journal recent entries */
+  const journalCtx=Object.entries(D.journal||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3).map(([date,entry])=>`  * ${date}: ${(entry.text||entry).substring(0,100)}...`).join("\n");
+
+  /* Schedule summary */
+  const schedCtx=(D.horario||[]).filter(h=>h.slots&&h.slots.some(s=>s)).map(h=>`  ${h.hour}: ${h.slots.filter(s=>s).join(", ")}`).join("\n");
+
+  /* Today's tasks */
+  const todayCtx=(D.todayTasks||[]).map(t=>`  * [${t.done?"✓":"○"}] ${t.task} (${t.cat})`).join("\n");
+
+  /* Compliance stats */
+  const compDays=last7.filter(e=>chkComp(e).day).length;
+
+  return`=== DATOS COMPLETOS DEL LIFE DASHBOARD ===
+
+📊 FITNESS Y NUTRICIÓN:
 - Plan: ${S.planName} | Meta: ${S.planGoal}
-- Peso actual: ${curW}kg (inicio: ${S.startWeight}kg, meta: ${S.goalWeight}kg)
-- Cintura actual: ${curWaist}cm (inicio: ${S.startWaist}cm)
-- Semana completada: ${completedWeek}/${S.cutWeeks} | Día ${Math.min(dayN,totalDays)}/${totalDays}
-- Perfil activo: ${gp.name} → Cal:${gp.cal} Prot:${gp.prot}g Grasa:${gp.fat}g Carbos:${gp.carbs}g Azúcar:≤${gp.sugar}g Entrenos:${gp.trainingPerWeek}x/sem
-- Hábitos activos: ${habitsCtx}
-- Proyectos: ${projCtx}
-- Últimos 7 registros: ${last7.map(e=>`${e.date}:${e.cal}cal,${e.prot}P,${e.fat}G,${e.carbs}C,${e.sugar}S,${e.weight}kg`).join(" | ")}
-- Promedio reciente: Cal:${avg(last7.filter(e=>+e.cal>0),"cal")} Prot:${avg(last7.filter(e=>+e.prot>0),"prot")}g Grasa:${avg(last7.filter(e=>+e.fat>0),"fat")}g Carbos:${avg(last7.filter(e=>+e.carbs>0),"carbs")}g${customPrompt}`;
+- Peso: ${curW}kg (inicio: ${S.startWeight}kg → meta: ${S.goalWeight}kg) | Perdido: ${wLost}kg
+- Cintura: ${curWaist}cm (inicio: ${S.startWaist}cm)
+- Semana: ${completedWeek}/${S.cutWeeks} | Día ${Math.min(dayN,totalDays)}/${totalDays} | Progreso: ${prog}%
+- Perfil nutricional: ${gp.name} → Cal:${gp.cal} | Prot:${gp.prot}g | Grasa:${gp.fat}g | Carbos:${gp.carbs}g | Azúcar:≤${gp.sugar}g | Fibra:${gp.fiber||25}g | Entrenos:${gp.trainingPerWeek}x/sem
+- Últimos 7 registros:
+${last7.map(e=>`  ${e.date}: ${e.cal}cal, ${e.prot}P, ${e.fat}G, ${e.carbs}C, ${e.sugar}S, ${e.fiber||0}F, ${e.weight}kg, ${e.steps||0} pasos`).join("\n")}
+- Promedio últimos 7: Cal:${avg(last7.filter(e=>+e.cal>0),"cal")} | Prot:${avg(last7.filter(e=>+e.prot>0),"prot")}g | Grasa:${avg(last7.filter(e=>+e.fat>0),"fat")}g | Carbos:${avg(last7.filter(e=>+e.carbs>0),"carbs")}g | Fibra:${avg(last7.filter(e=>+e.fiber>0),"fiber")}g
+- Compliance últimos 7 días: ${compDays}/7 días cumplidos
+
+📂 PROYECTOS:
+${projCtx||"  Sin proyectos"}
+
+📚 LECTURA:
+${booksCtx||"  Sin libros"}
+
+🎯 HÁBITOS (esta semana):
+${habitsDetail||"  Sin hábitos activos"}
+
+📅 TAREAS DE HOY:
+${todayCtx||"  Sin tareas"}
+
+${journalCtx?`📝 JOURNAL RECIENTE:\n${journalCtx}\n`:""}${schedCtx?`🕐 HORARIO SEMANAL:\n${schedCtx}\n`:""}${customPrompt}`;
 };
 
 /* Search OpenFoodFacts database for real nutritional data */
@@ -1010,46 +1066,82 @@ INSTRUCCIÓN: Selecciona el producto que mejor coincida con lo que el usuario de
 No se encontraron resultados exactos en la base de datos. Usa la tabla de referencia y tus conocimientos nutricionales.
 `;
     setLoadStatus("🤖 Calculando macros...");
-    const prompt=`Eres un nutricionista experto. Desglosa CADA alimento por separado con sus macros individuales.
-${dbSection}
-TABLA DE REFERENCIA (por 100g, usar solo si no hay datos de la base de datos):
-- Avena en hojuelas: 389cal, 13.2g prot, 6.5g grasa, 66g carbs, 1g azúcar, 10.1g fibra
-- Arroz blanco cocido: 130cal, 2.7g prot, 0.3g grasa, 28g carbs, 0g azúcar, 0.4g fibra
-- Pechuga de pollo: 165cal, 31g prot, 3.6g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Huevo entero (50g): 72cal, 6.3g prot, 4.8g grasa, 0.4g carbs, 0.4g azúcar, 0g fibra
-- Clara de huevo (33g): 17cal, 3.6g prot, 0.1g grasa, 0.2g carbs, 0.2g azúcar, 0g fibra
-- Banano (120g): 105cal, 1.3g prot, 0.4g grasa, 27g carbs, 14g azúcar, 2.6g fibra
-- Pan blanco (rebanada 30g): 80cal, 2.7g prot, 1g grasa, 15g carbs, 1.5g azúcar, 1.2g fibra
-- Pasta cocida: 158cal, 5.8g prot, 0.9g grasa, 31g carbs, 0.6g azúcar, 1.8g fibra
-- Leche entera: 61cal, 3.2g prot, 3.3g grasa, 4.8g carbs, 5g azúcar, 0g fibra
-- Carne res molida: 250cal, 26g prot, 15g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Atún en lata: 116cal, 25.5g prot, 0.8g grasa, 0g carbs, 0g azúcar, 0g fibra
-- Frijol cocido: 127cal, 8.7g prot, 0.5g grasa, 22g carbs, 0.3g azúcar, 6.4g fibra
-- Aguacate: 160cal, 2g prot, 15g grasa, 9g carbs, 0.7g azúcar, 6.7g fibra
-- Papa cocida: 87cal, 1.9g prot, 0.1g grasa, 20g carbs, 0.8g azúcar, 2.2g fibra
-- Arepa de maíz: 200cal, 4g prot, 2g grasa, 43g carbs, 1g azúcar, 2g fibra
-- Whey protein (scoop 30g): 120cal, 24g prot, 1.5g grasa, 3g carbs, 1g azúcar, 0g fibra
-- Yogurt natural (100ml): 60cal, 3.5g prot, 3.3g grasa, 4.7g carbs, 4.7g azúcar, 0g fibra
-- Plátano maduro frito: 265cal, 1.2g prot, 11g grasa, 42g carbs, 18g azúcar, 2.5g fibra
-- Aceite/mantequilla (1 cda 14g): 120cal, 0g prot, 14g grasa, 0g carbs, 0g azúcar, 0g fibra
+    const prompt=`Eres un nutricionista certificado. Tu trabajo es calcular macros EXACTOS de cada alimento.
 
-REGLAS:
+IMPORTANTE: CADA alimento DEBE tener calorías > 0. Todo alimento real tiene calorías. Si no estás seguro, estima basándote en alimentos similares de la tabla.
+
+${dbSection}
+TABLA DE REFERENCIA (valores por 100g de porción comestible COCIDA/lista para comer):
+
+CARNES Y PROTEÍNAS:
+- Pechuga de pollo cocida: 165cal, 31.0g prot, 3.6g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Muslo de pollo cocido: 209cal, 26.0g prot, 10.9g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Lomo de res/fino cocido: 160cal, 28.0g prot, 5.0g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Carne res molida cocida (90/10): 196cal, 26.0g prot, 10.0g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Carne res molida cocida (80/20): 254cal, 26.0g prot, 17.0g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Costilla de res cocida: 260cal, 26.0g prot, 16.5g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Lomo de cerdo cocido: 190cal, 27.0g prot, 8.5g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Chuleta de cerdo cocida: 231cal, 25.0g prot, 14.0g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Salmón cocido: 208cal, 20.0g prot, 13.0g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Atún en lata: 116cal, 25.5g prot, 0.8g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Camarón cocido: 99cal, 24.0g prot, 0.3g grasa, 0.2g carbs, 0g azúcar, 0g fibra
+- Huevo entero (unidad ~50g): 72cal, 6.3g prot, 4.8g grasa, 0.4g carbs, 0.4g azúcar, 0g fibra
+- Clara de huevo (unidad ~33g): 17cal, 3.6g prot, 0.1g grasa, 0.2g carbs, 0.2g azúcar, 0g fibra
+- Whey protein (scoop 30g): 120cal, 24.0g prot, 1.5g grasa, 3.0g carbs, 1.0g azúcar, 0g fibra
+
+CARBOHIDRATOS Y GRANOS:
+- Arroz blanco cocido: 130cal, 2.7g prot, 0.3g grasa, 28.0g carbs, 0g azúcar, 0.4g fibra
+- Arroz integral cocido: 123cal, 2.7g prot, 1.0g grasa, 25.6g carbs, 0g azúcar, 1.6g fibra
+- Pasta cocida: 158cal, 5.8g prot, 0.9g grasa, 31.0g carbs, 0.6g azúcar, 1.8g fibra
+- Avena en hojuelas (cruda): 389cal, 13.2g prot, 6.5g grasa, 66.0g carbs, 1.0g azúcar, 10.1g fibra
+- Papa cocida: 87cal, 1.9g prot, 0.1g grasa, 20.0g carbs, 0.8g azúcar, 2.2g fibra
+- Yuca cocida: 160cal, 1.4g prot, 0.3g grasa, 38.0g carbs, 1.7g azúcar, 1.8g fibra
+- Pan blanco (rebanada ~30g): 80cal, 2.7g prot, 1.0g grasa, 15.0g carbs, 1.5g azúcar, 1.2g fibra
+- Pan integral (rebanada ~30g): 70cal, 3.5g prot, 1.0g grasa, 12.0g carbs, 1.5g azúcar, 2.0g fibra
+- Arepa de maíz (unidad ~100g): 200cal, 4.0g prot, 2.0g grasa, 43.0g carbs, 1.0g azúcar, 2.0g fibra
+- Tortilla de maíz (unidad ~30g): 63cal, 1.5g prot, 0.7g grasa, 13.0g carbs, 0.3g azúcar, 1.5g fibra
+
+FRUTAS Y VEGETALES:
+- Banano (unidad mediana ~120g): 105cal, 1.3g prot, 0.4g grasa, 27.0g carbs, 14.0g azúcar, 2.6g fibra
+- Manzana (unidad ~180g): 95cal, 0.5g prot, 0.3g grasa, 25.0g carbs, 19.0g azúcar, 4.4g fibra
+- Plátano maduro frito: 265cal, 1.2g prot, 11.0g grasa, 42.0g carbs, 18.0g azúcar, 2.5g fibra
+- Aguacate: 160cal, 2.0g prot, 15.0g grasa, 9.0g carbs, 0.7g azúcar, 6.7g fibra
+- Ensalada verde mixta (100g): 20cal, 1.5g prot, 0.2g grasa, 3.5g carbs, 1.5g azúcar, 2.0g fibra
+- Tomate: 18cal, 0.9g prot, 0.2g grasa, 3.9g carbs, 2.6g azúcar, 1.2g fibra
+
+LEGUMINOSAS:
+- Frijol cocido: 127cal, 8.7g prot, 0.5g grasa, 22.0g carbs, 0.3g azúcar, 6.4g fibra
+- Lenteja cocida: 116cal, 9.0g prot, 0.4g grasa, 20.0g carbs, 1.8g azúcar, 7.9g fibra
+
+LÁCTEOS Y GRASAS:
+- Leche entera: 61cal, 3.2g prot, 3.3g grasa, 4.8g carbs, 5.0g azúcar, 0g fibra
+- Leche descremada: 35cal, 3.4g prot, 0.1g grasa, 5.0g carbs, 5.0g azúcar, 0g fibra
+- Yogurt natural: 60cal, 3.5g prot, 3.3g grasa, 4.7g carbs, 4.7g azúcar, 0g fibra
+- Yogurt griego: 97cal, 9.0g prot, 5.0g grasa, 3.6g carbs, 3.2g azúcar, 0g fibra
+- Queso mozzarella: 280cal, 28.0g prot, 17.0g grasa, 3.1g carbs, 1.0g azúcar, 0g fibra
+- Queso crema: 342cal, 6.0g prot, 34.0g grasa, 4.0g carbs, 3.0g azúcar, 0g fibra
+- Aceite/mantequilla (1 cda ~14g): 120cal, 0g prot, 14.0g grasa, 0g carbs, 0g azúcar, 0g fibra
+- Mantequilla de maní (1 cda ~16g): 94cal, 4.0g prot, 8.0g grasa, 3.0g carbs, 1.0g azúcar, 1.0g fibra
+- Almendras: 579cal, 21.0g prot, 50.0g grasa, 22.0g carbs, 4.0g azúcar, 12.5g fibra
+
+REGLAS ESTRICTAS:
 1. Devuelve CADA alimento como un item separado en el array "items"
-2. Si hay datos de la base de datos, ÚSALOS para ese alimento
-3. Calcula proporcionalmente según la cantidad: Xg/100g × valores_por_100g
-4. Si no menciona cantidad, asume porción normal/mediana
-5. NO sumes los totales, yo los sumo en código
-6. Para cada item verifica: cal ≈ (prot×4)+(fat×9)+(carbs×4). Si no cuadra, recalcula ESE item
-7. "source" es "db" si usaste datos de OpenFoodFacts, "ref" si usaste la tabla, "est" si estimaste
-8. INCLUYE SIEMPRE el campo "fiber" (fibra dietética en gramos) para cada alimento
-9. USA 1 DECIMAL de precisión en TODOS los valores numéricos (cal, prot, fat, carbs, sugar, fiber). NO redondees a entero
+2. Si hay datos de la base de datos (OpenFoodFacts), ÚSALOS con prioridad
+3. Si no, USA la tabla de referencia. Si no está en la tabla, estima basándote en el alimento más similar
+4. Calcula proporcionalmente: (cantidad_en_g / 100) × valores_por_100g
+5. Si no menciona cantidad, asume porción normal (ej: 1 huevo=50g, 1 banano=120g, 1 pechuga=150g, 1 taza arroz=160g)
+6. NO sumes los totales, yo los sumo en código
+7. VERIFICACIÓN OBLIGATORIA: cal ≈ (prot×4)+(fat×9)+(carbs×4). Tolerancia ±10%. Si no cuadra, AJUSTA
+8. "source": "db" si usaste OpenFoodFacts, "ref" si usaste la tabla, "est" si estimaste
+9. INCLUYE SIEMPRE "fiber" (fibra) para cada alimento
+10. USA 1 DECIMAL en todos los valores. NO redondees a entero
+11. NUNCA devuelvas 0 calorías para un alimento real. Si no conoces el alimento, estima conservadoramente
+12. Para carnes: diferencia entre crudo y cocido. Cocido pierde ~25% peso por agua. Los valores de la tabla son por 100g COCIDO
 
 Comida: "${foodText}"
 
-Responde SOLO JSON válido, sin texto adicional. USA 1 DECIMAL de precisión en todos los macros (no redondees a entero):
-{"items":[{"name":"60g avena","cal":233.4,"prot":7.9,"fat":3.9,"carbs":39.6,"sugar":0.6,"fiber":6.1,"source":"ref"},{"name":"1 banano","cal":105.0,"prot":1.3,"fat":0.4,"carbs":27.0,"sugar":14.0,"fiber":2.6,"source":"ref"}]}
-
-${buildContext()}`;
+Responde SOLO JSON válido, sin texto extra ni explicaciones:
+{"items":[{"name":"60g avena","cal":233.4,"prot":7.9,"fat":3.9,"carbs":39.6,"sugar":0.6,"fiber":6.1,"source":"ref"},{"name":"1 banano","cal":105.0,"prot":1.3,"fat":0.4,"carbs":27.0,"sugar":14.0,"fiber":2.6,"source":"ref"}]}`;
     const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
     const jsonMatch=resp.match(/\{[\s\S]*\}/);
     if(jsonMatch){
@@ -1057,11 +1149,20 @@ ${buildContext()}`;
       /* Support both old format {cal,prot,...} and new {items:[...]} */
       let items=parsed.items;
       if(!items||!Array.isArray(items)){
-        /* Fallback: old single-object format */
         items=[{name:foodText,cal:+parsed.cal||0,prot:+parsed.prot||0,fat:+parsed.fat||0,carbs:+parsed.carbs||0,sugar:+parsed.sugar||0,fiber:+parsed.fiber||0,source:"est"}];
       }
       /* JavaScript does the math - never trust AI sums */
       const r1=v=>Math.round((+v||0)*10)/10;
+      /* Validate each item: recalculate cal from macros if it seems wrong */
+      items=items.map(it=>{
+        let c=+(it.cal)||0,p=+(it.prot)||0,f=+(it.fat)||0,cb=+(it.carbs)||0;
+        const expectedCal=(p*4)+(f*9)+(cb*4);
+        /* If AI returned 0 cal but has macros, recalculate */
+        if(c===0&&expectedCal>0)c=expectedCal;
+        /* If cal is way off from macro calculation (>50% diff), use macro-based cal */
+        if(c>0&&expectedCal>0&&Math.abs(c-expectedCal)/expectedCal>0.5)c=Math.round(expectedCal*10)/10;
+        return{...it,cal:c};
+      });
       const food={cal:0,prot:0,fat:0,carbs:0,sugar:0,fiber:0,detail:""};
       const lines=[];
       items.forEach(it=>{
@@ -1072,12 +1173,14 @@ ${buildContext()}`;
       });
       food.cal=r1(food.cal);food.prot=r1(food.prot);food.fat=r1(food.fat);food.carbs=r1(food.carbs);food.sugar=r1(food.sugar);food.fiber=r1(food.fiber);
       food.detail=lines.join("\n");
-      if(food.cal>0||food.prot>0){setParsedFood(food)}else{setParsedFood(null)}
-      const dbNote=dbResults.length>0?`\n\n🔬 = dato de base de datos real (OpenFoodFacts)`:"";
-      setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Desglose:\n${lines.join("\n")}\n\n✅ Totales (calculados): ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S | ${food.fiber}g F${dbNote}`}]);
+      if(food.cal>0||food.prot>0){setParsedFood(food)}else{setParsedFood(null);setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No pude calcular macros para "${foodText}". Intenta ser más específico (ej: "150g pechuga de pollo a la plancha con 200g arroz blanco")`}])}
+      if(food.cal>0||food.prot>0){
+        const dbNote=dbResults.length>0?`\n\n🔬 = dato de base de datos real (OpenFoodFacts)`:"";
+        setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Desglose:\n${lines.join("\n")}\n\n✅ Totales (calculados): ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S | ${food.fiber}g F${dbNote}`}]);
+      }
     } else {
       setParsedFood(null);
-      setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
+      setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ Error al procesar la respuesta. Intenta de nuevo con una descripción más clara (ej: "200g arroz con 150g pollo y ensalada")`}]);
     }
   }catch(e){
     if(e.message.startsWith("QUOTA|")){
@@ -1095,11 +1198,11 @@ ${buildContext()}`;
 
 const addFoodToLog=()=>{
   if(!parsedFood)return;
-  const entry={date:todayS(),week:`S${currentWeek}`,dayType:"dt2",weight:"",waist:"",cal:parsedFood.cal,prot:parsedFood.prot,fat:parsedFood.fat,carbs:parsedFood.carbs,sugar:parsedFood.sugar,steps:"",sleep:"",notes:"AI: "+input};
+  const entry={date:todayS(),week:`S${currentWeek}`,dayType:"dt2",weight:"",waist:"",cal:parsedFood.cal,prot:parsedFood.prot,fat:parsedFood.fat,carbs:parsedFood.carbs,sugar:parsedFood.sugar,fiber:parsedFood.fiber,steps:"",sleep:"",notes:"AI: "+input};
   const existing=fl.findIndex(e=>e.date===todayS());
   const log=[...fl];
   if(existing>=0){
-    log[existing]={...log[existing],cal:(+log[existing].cal||0)+parsedFood.cal,prot:(+log[existing].prot||0)+parsedFood.prot,fat:(+log[existing].fat||0)+parsedFood.fat,carbs:(+log[existing].carbs||0)+parsedFood.carbs,sugar:(+log[existing].sugar||0)+parsedFood.sugar,notes:log[existing].notes?(log[existing].notes+"; AI: "+parsedFood.detail):("AI: "+parsedFood.detail)};
+    log[existing]={...log[existing],cal:(+log[existing].cal||0)+parsedFood.cal,prot:(+log[existing].prot||0)+parsedFood.prot,fat:(+log[existing].fat||0)+parsedFood.fat,carbs:(+log[existing].carbs||0)+parsedFood.carbs,sugar:(+log[existing].sugar||0)+parsedFood.sugar,fiber:(+log[existing].fiber||0)+parsedFood.fiber,notes:log[existing].notes?(log[existing].notes+"; AI: "+parsedFood.detail):("AI: "+parsedFood.detail)};
   } else { log.push(entry);log.sort((a,b)=>a.date.localeCompare(b.date)); }
   sv({...D,fitnessLog:log});
   setMsgs(prev=>[...prev,{role:"ai",text:"✅ Registrado en fitness log"+(existing>=0?" (sumado al registro existente de hoy)":"")}]);
@@ -1113,15 +1216,38 @@ const askChat=async(retryInput)=>{
   setLastAction({type:"chat",input:userMsg});
   if(!retryInput){setInput("");setMsgs(prev=>[...prev,{role:"user",text:userMsg}])}
   try{
-    const history=msgs.slice(-6).map(m=>`${m.role==="user"?"USUARIO":"ASISTENTE"}: ${m.text}`).join("\n");
-    const prompt=`Eres un coach de fitness y nutrición experto. Responde en español, de forma concisa y útil. Usa emojis moderadamente.
+    const history=msgs.slice(-8).map(m=>`${m.role==="user"?"USUARIO":"ASISTENTE"}: ${m.text}`).join("\n");
+    const prompt=`Eres el asistente inteligente del Life Dashboard, un sistema integral de productividad y fitness. Tu nombre es "Coach". Eres experto en:
+- Nutrición deportiva y planes de alimentación
+- Entrenamiento de fuerza y acondicionamiento
+- Gestión de proyectos y productividad
+- Hábitos y desarrollo personal
+- Lectura y aprendizaje
+
+PERSONALIDAD:
+- Habla en español, de forma natural y directa como un amigo que sabe mucho
+- Sé específico y usa los DATOS REALES del usuario (no genéricos)
+- Cuando analices datos, menciona números concretos
+- Da recomendaciones accionables y prácticas
+- Usa emojis con moderación para dar estructura visual
+- Responde de forma concisa pero completa. No rellenes con texto genérico
+- Si el usuario pregunta sobre algo del dashboard, CONSULTA los datos y responde con información real
+
+CAPACIDADES - Puedes responder sobre CUALQUIER sección del dashboard:
+1. FITNESS: progreso de peso/cintura, análisis de macros, compliance, tendencias, recomendaciones nutricionales
+2. PROYECTOS: estado actual, tareas pendientes, prioridades, deadlines, recomendaciones de gestión
+3. HÁBITOS: seguimiento semanal, consistencia, sugerencias para mejorar adherencia
+4. LECTURA: libros en progreso, recomendaciones, conexiones entre lecturas y objetivos
+5. HORARIO: optimización de rutina, distribución del tiempo
+6. TAREAS: priorización del día, gestión de pendientes
+7. GENERAL: cualquier pregunta de fitness, nutrición, productividad o desarrollo personal
 
 ${buildContext()}
 
-${history?`HISTORIAL:\n${history}\n`:""}
+${history?`CONVERSACIÓN PREVIA:\n${history}\n`:""}
 USUARIO: ${userMsg}
 
-Responde de forma directa y personalizada basándote en los datos del usuario.`;
+Responde basándote en los datos REALES del usuario. Si pregunta sobre su progreso, usa los números. Si pide consejos, personalízalos a su situación. Si pregunta sobre proyectos/hábitos/libros, consulta los datos del contexto.`;
     const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
     setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
   }catch(e){
@@ -1224,7 +1350,7 @@ sv({...D,settings:{...S,aiPrompt:current+separator+text.slice(0,8000)}});
 {/* Messages */}
 {mode!=="prompt"&&<div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
 {msgs.length===0&&<div style={{textAlign:"center",padding:"30px 10px",color:C.t3,fontSize:"0.75rem"}}>
-{mode==="food"?"🍽️ Escribe lo que comiste y te calculo los macros automáticamente.\n\nEjemplo: \"200g de pollo a la plancha con arroz y ensalada\"":"💬 Pregúntame sobre tu progreso, qué comer, recomendaciones, etc."}
+{mode==="food"?"🍽️ Escribe lo que comiste y te calculo los macros con 1 decimal de precisión.\n\nEjemplo: \"200g de pollo a la plancha con arroz y ensalada\"":"💬 Pregúntame lo que quieras: fitness, nutrición, proyectos, hábitos, libros, horario, productividad..."}
 </div>}
 {msgs.map((m,i)=>(<div key={i} style={{alignSelf:m.role==="user"?"flex-end":"flex-start",maxWidth:"85%"}}>
 <div style={{padding:"8px 12px",borderRadius:m.role==="user"?"12px 12px 4px 12px":"12px 12px 12px 4px",background:m.role==="user"?C.purple+"25":m.retry?C.orange+"15":C.bg3,border:`1px solid ${m.role==="user"?C.purple+"40":m.retry?C.orange+"40":C.b1}`,fontSize:"0.76rem",color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.5}}>
@@ -1249,7 +1375,7 @@ sv({...D,settings:{...S,aiPrompt:current+separator+text.slice(0,8000)}});
 {!apiKey?<div style={{fontSize:"0.7rem",color:C.orange,textAlign:"center",padding:6}}>🔑 Configura tu API Key de {provider==="groq"?"Groq":"Gemini"} arriba para empezar</div>:
 <div style={{display:"flex",gap:6}}>
 <input style={{...z.inp,flex:1,fontSize:"0.78rem",padding:"8px 12px"}} value={input} onChange={e=>setInput(e.target.value)}
-  placeholder={mode==="food"?"¿Qué comiste? Ej: pollo con arroz...":"Pregúntale al coach..."}
+  placeholder={mode==="food"?"¿Qué comiste? Ej: 150g pollo con arroz...":"Pregunta lo que quieras: fitness, proyectos, hábitos..."}
   onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();mode==="food"?analyzeFood():askChat()}}}
   disabled={loading}/>
 <button style={{...z.btn(true),padding:"8px 14px"}} onClick={mode==="food"?analyzeFood:askChat} disabled={loading||!input.trim()}>
@@ -1304,22 +1430,22 @@ return(<Mdl title="⚙ Configuración" onClose={onClose} ch={<div style={{displa
 /* === DAY TYPE EDITOR (grams, not multipliers) === */
 const DayTypeEditor=({onClose})=>{
 const[types,setTypes]=useState([...dayTypes]);const[ed,setEd]=useState(null);
-const[f,setF]=useState({name:"",emoji:"🏋️",color:"#b8f000",cal:2250,prot:170,carbs:220,fat:65,sugar:40,calMin:2250,calMax:2350});
+const[f,setF]=useState({name:"",emoji:"🏋️",color:"#b8f000",cal:2250,prot:170,carbs:220,fat:65,sugar:40,fiber:25,calMin:2250,calMax:2350});
 return(<Mdl title="🔧 Tipos de Día" onClose={onClose} wide ch={!ed?(<div>
 {types.map(t=>(<div key={t.id} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 0",borderBottom:`1px solid ${C.b1}`,flexWrap:"wrap"}}>
 <span style={{fontSize:"1rem"}}>{t.emoji}</span><span style={{flex:1,fontWeight:500,minWidth:80}}>{t.name}</span>
-<span style={{fontFamily:"monospace",fontSize:"0.58rem",color:C.t2}}>{t.cal}kcal {t.prot}P {t.carbs}C {t.fat}G ≤{t.sugar}S [{t.calMin}-{t.calMax}]</span>
+<span style={{fontFamily:"monospace",fontSize:"0.58rem",color:C.t2}}>{t.cal}kcal {t.prot}P {t.carbs}C {t.fat}G ≤{t.sugar}S {t.fiber||0}F [{t.calMin}-{t.calMax}]</span>
 <button style={z.btnS(false)} onClick={()=>{setEd(t.id);setF({...t})}}>✏️</button>
 <button style={z.btnD} onClick={()=>setTypes(types.filter(x=>x.id!==t.id))}>✕</button></div>))}
 <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>
-<button style={z.btn(false)} onClick={()=>{setEd("new");setF({name:"",emoji:"🏋️",color:"#b8f000",cal:2250,prot:170,carbs:220,fat:65,sugar:40,calMin:2250,calMax:2350})}}>+ Nuevo</button>
+<button style={z.btn(false)} onClick={()=>{setEd("new");setF({name:"",emoji:"🏋️",color:"#b8f000",cal:2250,prot:170,carbs:220,fat:65,sugar:40,fiber:25,calMin:2250,calMax:2350})}}>+ Nuevo</button>
 <button style={z.btn(true)} onClick={()=>{sv({...D,dayTypes:types});onClose()}}>Guardar</button></div>
 </div>):(<div style={{display:"flex",flexDirection:"column",gap:8}}>
 <div style={{fontSize:"0.85rem",fontWeight:600,color:C.t1}}>{ed==="new"?"Crear":"Editando: "+f.name}</div>
 {[["Nombre","name","text"],["Emoji","emoji","text"],["Color","color","color"]].map(([l,k,t])=>(<div key={k} style={{display:"flex",alignItems:"center",gap:8}}><span style={{width:110,fontSize:"0.76rem",color:C.t2}}>{l}</span><input style={{...z.inpM,maxWidth:t==="color"?55:160}} type={t} value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})}/></div>))}
 <div style={{...z.lb,marginTop:6}}>Macros objetivo (gramos)</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(90px,1fr))",gap:8}}>
-{[["Calorías","cal"],["Proteína","prot"],["Carbos","carbs"],["Grasas","fat"],["Azúcar máx","sugar"]].map(([l,k])=>(<div key={k}><div style={{fontSize:"0.6rem",color:C.t3,marginBottom:3}}>{l}</div><input style={z.inpM} type="number" value={f[k]} onChange={e=>setF({...f,[k]:+e.target.value})}/></div>))}</div>
+{[["Calorías","cal"],["Proteína","prot"],["Carbos","carbs"],["Grasas","fat"],["Azúcar máx","sugar"],["Fibra","fiber"]].map(([l,k])=>(<div key={k}><div style={{fontSize:"0.6rem",color:C.t3,marginBottom:3}}>{l}</div><input style={z.inpM} type="number" value={f[k]} onChange={e=>setF({...f,[k]:+e.target.value})}/></div>))}</div>
 <div style={{...z.lb,marginTop:6}}>Rango Calorías para Compliance (K✓)</div>
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
 <div><div style={{fontSize:"0.6rem",color:C.t3,marginBottom:3}}>Min</div><input style={z.inpM} type="number" value={f.calMin} onChange={e=>setF({...f,calMin:+e.target.value})}/></div>
