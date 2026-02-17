@@ -98,6 +98,139 @@ const DEF_GOALS=[
 {id:"bulk",name:"Bulking",cal:3000,prot:180,fat:80,carbs:350,sugar:50,fiber:30,trainingPerWeek:5},
 {id:"mantenimiento",name:"Mantenimiento",cal:2500,prot:170,fat:70,carbs:280,sugar:45,fiber:25,trainingPerWeek:4},
 {id:"personalizado",name:"Personalizado",cal:2250,prot:170,fat:65,carbs:220,sugar:40,fiber:25,trainingPerWeek:5}];
+
+/* === BUILT-IN FOOD REFERENCE TABLE (per 100g) === */
+const FOOD_DB=[
+{"alimento":"Lomo fino res","estado":"Crudo","kcal":120,"proteina_g":22,"grasas_g":3,"grasas_saturadas_g":1.2,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":55,"colesterol_mg":70},
+{"alimento":"Lomo fino res","estado":"Cocido","kcal":190,"proteina_g":29,"grasas_g":7,"grasas_saturadas_g":3,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":60,"colesterol_mg":85},
+{"alimento":"Pasta Barilla","estado":"Cruda","kcal":360,"proteina_g":12,"grasas_g":1.5,"grasas_saturadas_g":0.3,"carbs_g":72,"azucar_g":3,"fibra_g":3,"sodio_mg":5,"colesterol_mg":0},
+{"alimento":"Pasta Barilla","estado":"Cocida","kcal":155,"proteina_g":5.5,"grasas_g":0.9,"grasas_saturadas_g":0.2,"carbs_g":31,"azucar_g":2,"fibra_g":1.8,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Arroz blanco","estado":"Cocido","kcal":130,"proteina_g":2.5,"grasas_g":0.3,"grasas_saturadas_g":0.1,"carbs_g":28,"azucar_g":0,"fibra_g":0.4,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Yogurt griego casero","estado":"Natural","kcal":97,"proteina_g":9,"grasas_g":5,"grasas_saturadas_g":3,"carbs_g":3.5,"azucar_g":3.5,"fibra_g":0,"sodio_mg":36,"colesterol_mg":20},
+{"alimento":"Aceite oliva","estado":"Natural","kcal":884,"proteina_g":0,"grasas_g":100,"grasas_saturadas_g":14,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":2,"colesterol_mg":0},
+{"alimento":"Huevo entero","estado":"Natural","kcal":155,"proteina_g":13,"grasas_g":11,"grasas_saturadas_g":3.3,"carbs_g":1.1,"azucar_g":1.1,"fibra_g":0,"sodio_mg":124,"colesterol_mg":373},
+{"alimento":"Yema huevo","estado":"Natural","kcal":322,"proteina_g":16,"grasas_g":27,"grasas_saturadas_g":9.5,"carbs_g":3.6,"azucar_g":0.6,"fibra_g":0,"sodio_mg":48,"colesterol_mg":1085},
+{"alimento":"Avena","estado":"Cruda","kcal":389,"proteina_g":17,"grasas_g":7,"grasas_saturadas_g":1.2,"carbs_g":66,"azucar_g":1,"fibra_g":10,"sodio_mg":2,"colesterol_mg":0},
+{"alimento":"Crema de mani Wake Up","estado":"Natural","kcal":588,"proteina_g":25,"grasas_g":50,"grasas_saturadas_g":10,"carbs_g":20,"azucar_g":6,"fibra_g":6,"sodio_mg":400,"colesterol_mg":0},
+{"alimento":"Tilapia","estado":"Cruda","kcal":96,"proteina_g":20,"grasas_g":1.7,"grasas_saturadas_g":0.6,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":52,"colesterol_mg":50},
+{"alimento":"Tilapia","estado":"Cocida","kcal":128,"proteina_g":26,"grasas_g":2.7,"grasas_saturadas_g":0.8,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":60,"colesterol_mg":57},
+{"alimento":"Salmon","estado":"Crudo","kcal":208,"proteina_g":20,"grasas_g":13,"grasas_saturadas_g":3,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":59,"colesterol_mg":55},
+{"alimento":"Salmon","estado":"Cocido","kcal":232,"proteina_g":25,"grasas_g":14,"grasas_saturadas_g":3.1,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":63,"colesterol_mg":63},
+{"alimento":"Costilla res","estado":"Cruda","kcal":291,"proteina_g":19,"grasas_g":24,"grasas_saturadas_g":10,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":70,"colesterol_mg":80},
+{"alimento":"Costilla res","estado":"Cocida","kcal":330,"proteina_g":25,"grasas_g":27,"grasas_saturadas_g":11,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":80,"colesterol_mg":95},
+{"alimento":"Pechuga pollo","estado":"Cruda","kcal":120,"proteina_g":22,"grasas_g":2.5,"grasas_saturadas_g":0.6,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":45,"colesterol_mg":60},
+{"alimento":"Pechuga pollo","estado":"Cocida","kcal":165,"proteina_g":31,"grasas_g":3.6,"grasas_saturadas_g":1,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":70,"colesterol_mg":85},
+{"alimento":"Muslo pollo","estado":"Cocido","kcal":209,"proteina_g":26,"grasas_g":11,"grasas_saturadas_g":3,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":90,"colesterol_mg":105},
+{"alimento":"Carne molida res 90/10","estado":"Cruda","kcal":176,"proteina_g":26,"grasas_g":10,"grasas_saturadas_g":4,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":72,"colesterol_mg":75},
+{"alimento":"Carne molida res 90/10","estado":"Cocida","kcal":217,"proteina_g":26,"grasas_g":12,"grasas_saturadas_g":5,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":85,"colesterol_mg":88},
+{"alimento":"Atun en agua","estado":"Natural","kcal":116,"proteina_g":26,"grasas_g":1,"grasas_saturadas_g":0.3,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":247,"colesterol_mg":47},
+{"alimento":"Atun en aceite","estado":"Natural","kcal":198,"proteina_g":29,"grasas_g":8,"grasas_saturadas_g":1.5,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":350,"colesterol_mg":55},
+{"alimento":"Queso mozzarella","estado":"Natural","kcal":280,"proteina_g":28,"grasas_g":17,"grasas_saturadas_g":11,"carbs_g":3,"azucar_g":1,"fibra_g":0,"sodio_mg":627,"colesterol_mg":79},
+{"alimento":"Pan integral","estado":"Natural","kcal":247,"proteina_g":13,"grasas_g":4,"grasas_saturadas_g":0.7,"carbs_g":41,"azucar_g":6,"fibra_g":7,"sodio_mg":400,"colesterol_mg":0},
+{"alimento":"Papa cocida","estado":"Natural","kcal":87,"proteina_g":2,"grasas_g":0.1,"grasas_saturadas_g":0,"carbs_g":20,"azucar_g":1,"fibra_g":2.2,"sodio_mg":6,"colesterol_mg":0},
+{"alimento":"Aguacate","estado":"Natural","kcal":160,"proteina_g":2,"grasas_g":15,"grasas_saturadas_g":2,"carbs_g":9,"azucar_g":0.7,"fibra_g":7,"sodio_mg":7,"colesterol_mg":0},
+{"alimento":"Almendras","estado":"Natural","kcal":579,"proteina_g":21,"grasas_g":50,"grasas_saturadas_g":4,"carbs_g":22,"azucar_g":4,"fibra_g":12,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Chia","estado":"Natural","kcal":486,"proteina_g":17,"grasas_g":31,"grasas_saturadas_g":3,"carbs_g":42,"azucar_g":0,"fibra_g":34,"sodio_mg":16,"colesterol_mg":0},
+{"alimento":"Miel","estado":"Natural","kcal":304,"proteina_g":0.3,"grasas_g":0,"grasas_saturadas_g":0,"carbs_g":82,"azucar_g":82,"fibra_g":0,"sodio_mg":4,"colesterol_mg":0},
+{"alimento":"Chocolate 70%","estado":"Natural","kcal":598,"proteina_g":8,"grasas_g":43,"grasas_saturadas_g":25,"carbs_g":46,"azucar_g":24,"fibra_g":11,"sodio_mg":20,"colesterol_mg":3},
+{"alimento":"Proteina Whey","estado":"Polvo","kcal":390,"proteina_g":75,"grasas_g":6,"grasas_saturadas_g":3,"carbs_g":10,"azucar_g":6,"fibra_g":1,"sodio_mg":200,"colesterol_mg":60},
+{"alimento":"Quinua cocida","estado":"Natural","kcal":120,"proteina_g":4.4,"grasas_g":1.9,"grasas_saturadas_g":0.2,"carbs_g":21,"azucar_g":0.9,"fibra_g":2.8,"sodio_mg":7,"colesterol_mg":0},
+{"alimento":"Arepa blanca","estado":"Natural","kcal":218,"proteina_g":5,"grasas_g":2,"grasas_saturadas_g":0.4,"carbs_g":45,"azucar_g":1,"fibra_g":2,"sodio_mg":350,"colesterol_mg":0},
+{"alimento":"Manzana","estado":"Natural","kcal":52,"proteina_g":0.3,"grasas_g":0.2,"grasas_saturadas_g":0,"carbs_g":14,"azucar_g":10,"fibra_g":2.4,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Fresa","estado":"Natural","kcal":32,"proteina_g":0.7,"grasas_g":0.3,"grasas_saturadas_g":0,"carbs_g":7.7,"azucar_g":4.9,"fibra_g":2,"sodio_mg":1,"colesterol_mg":0}
+];
+
+/* Food DB search: normalize text for fuzzy matching */
+const normFood=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+
+/* Aliases for common food names → canonical names in FOOD_DB */
+const FOOD_ALIASES={
+  "pollo":"pechuga pollo","chicken":"pechuga pollo","breast":"pechuga pollo","pechuga":"pechuga pollo",
+  "muslo":"muslo pollo","thigh":"muslo pollo",
+  "lomo":"lomo fino res","tenderloin":"lomo fino res","filete":"lomo fino res",
+  "res":"lomo fino res","beef":"lomo fino res",
+  "costilla":"costilla res","ribs":"costilla res",
+  "carne molida":"carne molida res 90/10","molida":"carne molida res 90/10","ground beef":"carne molida res 90/10",
+  "arroz":"arroz blanco","rice":"arroz blanco",
+  "pasta":"pasta barilla","spaghetti":"pasta barilla","espagueti":"pasta barilla","fideo":"pasta barilla",
+  "avena":"avena","oats":"avena","oatmeal":"avena",
+  "huevo":"huevo entero","egg":"huevo entero","huevos":"huevo entero",
+  "yema":"yema huevo","yolk":"yema huevo",
+  "yogurt":"yogurt griego casero","yogur":"yogurt griego casero","greek yogurt":"yogurt griego casero",
+  "aceite":"aceite oliva","olive oil":"aceite oliva",
+  "crema de mani":"crema de mani wake up","mantequilla de mani":"crema de mani wake up","peanut butter":"crema de mani wake up",
+  "tilapia":"tilapia","fish":"tilapia",
+  "salmon":"salmon","salmón":"salmon",
+  "atun":"atun en agua","tuna":"atun en agua",
+  "queso":"queso mozzarella","mozzarella":"queso mozzarella","cheese":"queso mozzarella",
+  "pan":"pan integral","bread":"pan integral","pan integral":"pan integral",
+  "papa":"papa cocida","potato":"papa cocida","patata":"papa cocida",
+  "aguacate":"aguacate","avocado":"aguacate",
+  "almendras":"almendras","almonds":"almendras",
+  "chia":"chia","chía":"chia",
+  "miel":"miel","honey":"miel",
+  "chocolate":"chocolate 70%",
+  "whey":"proteina whey","proteina":"proteina whey","protein":"proteina whey",
+  "quinua":"quinua cocida","quinoa":"quinua cocida",
+  "arepa":"arepa blanca",
+  "manzana":"manzana","apple":"manzana",
+  "fresa":"fresa","strawberry":"fresa","fresas":"fresa"
+};
+
+/* Search food in personal DB (priority 1) then reference table (priority 2).
+   Returns {match, source:"personal"|"referencia", entry} or null */
+const searchFoodMatch=(query, personalFoods)=>{
+  const q=normFood(query);
+  /* Check aliases first */
+  const aliasKey=Object.keys(FOOD_ALIASES).find(a=>q.includes(normFood(a)));
+  const canonical=aliasKey?normFood(FOOD_ALIASES[aliasKey]):q;
+
+  /* Determine cooking state from query */
+  const rawWords=["crudo","cruda","raw"];
+  const cookedWords=["cocido","cocida","cooked","asado","asada","a la plancha","grilled","horneado","horneada"];
+  const isRaw=rawWords.some(w=>q.includes(w));
+  const isCooked=cookedWords.some(w=>q.includes(w));
+  /* Default: cocido for meats/grains, natural for others */
+  const preferState=isRaw?"Crudo":isCooked?"Cocido":null;
+
+  const scoreMatch=(entry)=>{
+    const name=normFood(entry.alimento);
+    let score=0;
+    if(name===canonical)score=100;
+    else if(canonical.includes(name)||name.includes(canonical))score=80;
+    else{
+      const words=canonical.split(" ");
+      const nameWords=name.split(" ");
+      const matched=words.filter(w=>nameWords.some(nw=>nw.includes(w)||w.includes(nw)));
+      score=matched.length>0?(matched.length/Math.max(words.length,nameWords.length))*60:0;
+    }
+    /* Boost for matching state */
+    if(preferState&&normFood(entry.estado)===normFood(preferState))score+=10;
+    else if(!preferState&&["Cocido","Cocida","Natural","Polvo"].includes(entry.estado))score+=5;
+    return score;
+  };
+
+  /* Search personal foods first */
+  if(personalFoods&&personalFoods.length>0){
+    let best=null,bestScore=0;
+    personalFoods.forEach(f=>{const s=scoreMatch(f);if(s>bestScore){bestScore=s;best=f}});
+    if(best&&bestScore>=40)return{match:best,source:"personal",score:bestScore};
+  }
+  /* Then search reference table */
+  let best=null,bestScore=0;
+  FOOD_DB.forEach(f=>{const s=scoreMatch(f);if(s>bestScore){bestScore=s;best=f}});
+  if(best&&bestScore>=40)return{match:best,source:"referencia",score:bestScore};
+  return null;
+};
+
+/* Default portions (grams) when user doesn't specify */
+const DEFAULT_PORTIONS={
+  "huevo entero":50,"yema huevo":17,"aceite oliva":14,"crema de mani wake up":32,
+  "pan integral":30,"arepa blanca":100,"manzana":180,"fresa":150,"miel":21,
+  "chocolate 70%":30,"proteina whey":30,"chia":15,"almendras":30,"aguacate":80,
+  "queso mozzarella":30,"atun en agua":80,"atun en aceite":80
+};
+
 const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],fiberRange:[20,999],goalProfiles:DEF_GOALS,activeGoalProfile:"cut",geminiApiKey:"",groqApiKey:"",aiProvider:"gemini",aiPrompt:""};
 
 const DEF_HAB=[
@@ -148,7 +281,7 @@ const DEF_FL=[
 
 const DEF_TT=[{id:"tt1",task:"Sesión de pesas — Upper body",cat:"Gym",done:false},{id:"tt2",task:"Revisar propuesta Asorsalud",cat:"Trabajo",done:false},{id:"tt3",task:"Llamada canchas de pádel",cat:"Trabajo",done:false},{id:"tt4",task:"Leer 30 min",cat:"Lectura",done:false},{id:"tt5",task:"Registrar macros del día",cat:"Fitness",done:false},{id:"tt6",task:"Estudiar 1 hora",cat:"Estudio",done:false}];
 
-const DEF={settings:DEF_S,dayTypes:DEF_DT,habits:DEF_HAB,habitWeekly:{},projects:DEF_PROJ,books:DEF_BOOKS,readingLog:DEF_RL,horario:DEF_HOR,fitnessLog:DEF_FL,todayTasks:DEF_TT,journal:{}};
+const DEF={settings:DEF_S,dayTypes:DEF_DT,habits:DEF_HAB,habitWeekly:{},projects:DEF_PROJ,books:DEF_BOOKS,readingLog:DEF_RL,horario:DEF_HOR,fitnessLog:DEF_FL,todayTasks:DEF_TT,journal:{},personalFoods:[]};
 
 /* === DEEP MERGE helper === */
 const deepMerge=(p)=>{
@@ -235,7 +368,7 @@ const signIn=()=>{if(!fbAuth)return setSyncError("Firebase no configurado. Edita
 const signOut=()=>{if(fbAuth)fbAuth.signOut()};
 const go=p=>{setPg(p);setSideOpen(false)};
 
-const S=D?.settings||DEF_S;const dayTypes=D?.dayTypes||DEF_DT;const fl=D?.fitnessLog||[];const habits=D?.habits||DEF_HAB;const projects=D?.projects||DEF_PROJ;const books=D?.books||DEF_BOOKS;const readingLog=D?.readingLog||[];const horario=D?.horario||DEF_HOR;const journal=D?.journal||{};const hw=D?.habitWeekly||{};
+const S=D?.settings||DEF_S;const dayTypes=D?.dayTypes||DEF_DT;const fl=D?.fitnessLog||[];const habits=D?.habits||DEF_HAB;const projects=D?.projects||DEF_PROJ;const books=D?.books||DEF_BOOKS;const readingLog=D?.readingLog||[];const horario=D?.horario||DEF_HOR;const journal=D?.journal||{};const hw=D?.habitWeekly||{};const personalFoods=D?.personalFoods||[];
 
 const getDT=id=>dayTypes.find(t=>t.id===id)||dayTypes[0];
 /* Compliance: P,G,C,S use global intervals; K (cal) uses per-day-type calMin/calMax */
@@ -799,6 +932,95 @@ return(<div style={z.card}>
 </div>
 </div>)};
 
+/* === FOOD DB MANAGER COMPONENT === */
+const FoodDBManager=({personalFoods,onSave})=>{
+const[search,setSearch]=useState("");
+const[tab,setTab]=useState("personal");/* personal | referencia */
+const[editIdx,setEditIdx]=useState(null);
+const[form,setForm]=useState({alimento:"",estado:"Natural",kcal:"",proteina_g:"",grasas_g:"",carbs_g:"",azucar_g:"0",fibra_g:"0"});
+
+const filtered=(tab==="personal"?personalFoods:FOOD_DB).filter(f=>{
+  if(!search)return true;
+  return normFood(f.alimento).includes(normFood(search))||normFood(f.estado).includes(normFood(search));
+});
+
+const startEdit=(idx)=>{
+  const f=personalFoods[idx];
+  setForm({alimento:f.alimento,estado:f.estado,kcal:f.kcal,proteina_g:f.proteina_g,grasas_g:f.grasas_g,carbs_g:f.carbs_g,azucar_g:f.azucar_g||0,fibra_g:f.fibra_g||0});
+  setEditIdx(idx);
+};
+
+const saveEdit=()=>{
+  const entry={alimento:form.alimento.trim(),estado:form.estado,kcal:+form.kcal||0,proteina_g:+form.proteina_g||0,grasas_g:+form.grasas_g||0,grasas_saturadas_g:0,carbs_g:+form.carbs_g||0,azucar_g:+form.azucar_g||0,fibra_g:+form.fibra_g||0,sodio_mg:0,colesterol_mg:0};
+  if(!entry.alimento)return;
+  const newFoods=[...personalFoods];
+  if(editIdx!==null&&editIdx>=0)newFoods[editIdx]=entry;
+  else newFoods.push(entry);
+  onSave(newFoods);
+  setEditIdx(null);setForm({alimento:"",estado:"Natural",kcal:"",proteina_g:"",grasas_g:"",carbs_g:"",azucar_g:"0",fibra_g:"0"});
+};
+
+const deleteFood=(idx)=>{
+  const newFoods=[...personalFoods];newFoods.splice(idx,1);onSave(newFoods);
+};
+
+const copyToPersonal=(entry)=>{
+  const newFoods=[...personalFoods,{...entry}];
+  onSave(newFoods);
+};
+
+return(<div style={{flex:1,overflowY:"auto",padding:"10px 12px",display:"flex",flexDirection:"column",gap:8}}>
+{/* Search */}
+<input style={{...z.inp,fontSize:"0.72rem",padding:"7px 10px"}} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar alimento..."/>
+{/* Tabs */}
+<div style={{display:"flex",gap:4}}>
+{[["personal",`🟢 Mis alimentos (${personalFoods.length})`],["referencia",`🔵 Referencia (${FOOD_DB.length})`]].map(([t,l])=>(
+<button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"5px",borderRadius:6,border:`1px solid ${tab===t?C.green:C.b1}`,background:tab===t?C.green+"20":"transparent",color:tab===t?C.t0:C.t3,fontSize:"0.6rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+))}
+</div>
+
+{/* Add/Edit form */}
+{(editIdx!==null||tab==="personal")&&<div style={{padding:8,background:C.bg3,borderRadius:8,border:`1px solid ${C.b1}`}}>
+<div style={{fontSize:"0.65rem",fontWeight:600,color:C.green,marginBottom:6}}>{editIdx!==null&&editIdx>=0?"✏️ Editando":"➕ Agregar alimento"} (macros por 100g)</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:4,marginBottom:4}}>
+<input style={{...z.inp,fontSize:"0.68rem",padding:"5px 8px"}} value={form.alimento} onChange={e=>setForm({...form,alimento:e.target.value})} placeholder="Nombre del alimento"/>
+<select style={{...z.inp,fontSize:"0.68rem",padding:"5px 4px"}} value={form.estado} onChange={e=>setForm({...form,estado:e.target.value})}>
+{["Natural","Cocido","Cocida","Crudo","Cruda","Polvo"].map(s=><option key={s} value={s}>{s}</option>)}
+</select>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4}}>
+{[["kcal","Cal"],["proteina_g","Prot"],["grasas_g","Grasa"],["carbs_g","Carbs"],["azucar_g","Azúcar"],["fibra_g","Fibra"]].map(([k,l])=>(
+<div key={k}><div style={{fontSize:"0.5rem",color:C.t3}}>{l}</div>
+<input style={{...z.inp,fontSize:"0.68rem",padding:"4px 6px",width:"100%"}} type="number" step="0.1" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} placeholder="0"/></div>
+))}
+</div>
+<div style={{display:"flex",gap:4,marginTop:6}}>
+<button style={{...z.btn(true),flex:1,padding:"5px",fontSize:"0.65rem"}} onClick={saveEdit}>{editIdx!==null&&editIdx>=0?"Guardar":"Agregar"}</button>
+{editIdx!==null&&editIdx>=0&&<button style={{...z.btn(false),padding:"5px",fontSize:"0.65rem"}} onClick={()=>{setEditIdx(null);setForm({alimento:"",estado:"Natural",kcal:"",proteina_g:"",grasas_g:"",carbs_g:"",azucar_g:"0",fibra_g:"0"})}}>Cancelar</button>}
+</div>
+</div>}
+
+{/* Food list */}
+<div style={{flex:1,overflowY:"auto"}}>
+{filtered.length===0&&<div style={{textAlign:"center",padding:20,color:C.t3,fontSize:"0.7rem"}}>{tab==="personal"?"No tienes alimentos personales aún.\nUsa el formulario de arriba o escribe en Comida:\n\"agregar arroz cocido 100g 130cal 2.5P 0.3G 28C\"":"No se encontraron resultados."}</div>}
+{filtered.map((f,i)=>{
+  const realIdx=tab==="personal"?personalFoods.indexOf(f):-1;
+  return(<div key={i} style={{padding:"6px 0",borderBottom:`1px solid ${C.b1}`,fontSize:"0.68rem"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div><span style={{fontWeight:600,color:C.t0}}>{f.alimento}</span> <span style={{color:C.t3,fontSize:"0.58rem"}}>({f.estado})</span></div>
+      <div style={{display:"flex",gap:3}}>
+        {tab==="personal"&&<button style={{background:"none",border:"none",color:C.cyan,cursor:"pointer",fontSize:"0.65rem",padding:"2px 4px"}} onClick={()=>startEdit(realIdx)}>✏️</button>}
+        {tab==="personal"&&<button style={{background:"none",border:"none",color:C.red,cursor:"pointer",fontSize:"0.65rem",padding:"2px 4px"}} onClick={()=>deleteFood(realIdx)}>🗑️</button>}
+        {tab==="referencia"&&<button style={{background:"none",border:"none",color:C.green,cursor:"pointer",fontSize:"0.55rem",padding:"2px 4px"}} title="Copiar a mis alimentos" onClick={()=>copyToPersonal(f)}>📋→🟢</button>}
+      </div>
+    </div>
+    <div style={{color:C.t2,fontSize:"0.58rem",fontFamily:"monospace"}}>{f.kcal}cal {f.proteina_g}P {f.grasas_g}G {f.carbs_g}C {f.azucar_g}S {f.fibra_g}F /100g</div>
+  </div>);
+})}
+</div>
+</div>);
+};
+
 /* === AI ASSISTANT (Gemini + Groq) === */
 const GEMINI_ENDPOINTS=[
   {model:"gemini-2.0-flash-lite",ver:"v1beta"},
@@ -870,30 +1092,7 @@ const callAI=async(prompt,provider,apiKey,onStatus)=>{
   return callGemini(prompt,apiKey,onStatus);
 };
 
-/* CalorieNinjas API - exact nutritional data from USDA database */
-const callCalorieNinjas=async(query,cnKey)=>{
-  const resp=await fetch(`https://api.calorieninjas.com/v1/nutrition?query=${encodeURIComponent(query)}`,{
-    headers:{"X-Api-Key":cnKey}
-  });
-  if(!resp.ok){
-    if(resp.status===401||resp.status===403)throw new Error("CN_KEY_INVALID");
-    if(resp.status===429)throw new Error("CN_RATE_LIMIT");
-    if(resp.status===400)return[]; /* Bad query — return empty so fallback kicks in */
-    throw new Error(`CalorieNinjas error: ${resp.status}`);
-  }
-  const data=await resp.json();
-  return(data.items||[]).map(it=>({
-    name:it.name||"?",
-    cal:+(it.calories)||0,
-    prot:+(it.protein_g)||0,
-    fat:+(it.fat_total_g)||0,
-    carbs:+(it.carbohydrates_total_g)||0,
-    sugar:+(it.sugar_g)||0,
-    fiber:+(it.fiber_g)||0,
-    serving:+(it.serving_size_g)||0,
-    source:"api"
-  }));
-};
+/* CalorieNinjas API removed — now using local food database */
 
 const testGeminiKey=async(key,onProgress)=>{
   const results=[];
@@ -1030,146 +1229,155 @@ ${todayCtx||"  Sin tareas"}
 ${journalCtx?`📝 JOURNAL RECIENTE:\n${journalCtx}\n`:""}${schedCtx?`🕐 HORARIO SEMANAL:\n${schedCtx}\n`:""}${customPrompt}`;
 };
 
-/* Search OpenFoodFacts database for real nutritional data */
-const searchFoodDB=async(query)=>{
-  try{
-    setLoadStatus("🔍 Buscando en base de datos...");
-    const terms=query.replace(/\d+\s*(g|gr|gramos|ml|kg|oz|lb|und|unidades|cucharadas?|tazas?|porciones?)\b/gi,"").trim();
-    const urls=[
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(terms)}&search_simple=1&action=process&json=1&page_size=5&cc=co&lc=es`,
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(terms)}&search_simple=1&action=process&json=1&page_size=5&lc=es`
-    ];
-    let allProducts=[];
-    for(const url of urls){
-      try{
-        const r=await fetch(url,{signal:AbortSignal.timeout(6000)});
-        if(!r.ok)continue;
-        const data=await r.json();
-        if(data.products)allProducts.push(...data.products);
-      }catch(e){continue}
-      if(allProducts.length>=3)break;
-    }
-    /* Deduplicate by id */
-    const seen=new Set();
-    allProducts=allProducts.filter(p=>{if(seen.has(p._id))return false;seen.add(p._id);return true});
-    /* Filter products that have nutritional data */
-    const results=allProducts.filter(p=>p.nutriments&&(p.nutriments["energy-kcal_100g"]||p.nutriments["energy-kcal"]||p.nutriments.energy_100g)).slice(0,5).map(p=>{
-      const n=p.nutriments;
-      const cal100=Math.round(n["energy-kcal_100g"]||n["energy-kcal"]||(n.energy_100g?n.energy_100g/4.184:0));
-      return{
-        name:p.product_name||"Sin nombre",
-        brand:p.brands||"",
-        cal100,
-        prot100:Math.round((n.proteins_100g||0)*10)/10,
-        fat100:Math.round((n.fat_100g||0)*10)/10,
-        carbs100:Math.round((n.carbohydrates_100g||0)*10)/10,
-        sugar100:Math.round((n.sugars_100g||0)*10)/10,
-        fiber100:Math.round((n.fiber_100g||0)*10)/10,
-        serving:p.serving_size||"",
-        image:p.image_small_url||""
-      };
-    });
-    return results;
-  }catch(e){return[]}
+/* ========== NEW FOOD ANALYSIS SYSTEM: Local DB + AI identification (no hallucinations) ========== */
+
+/* Try to parse "agregar" command: agregar [food] [amount]g [cal]cal [prot]P [fat]G [carbs]C */
+const parseAddFoodCmd=(text)=>{
+  const m=text.match(/^agregar\s+(.+?)\s+(\d+)\s*g\s+(\d+(?:\.\d+)?)\s*(?:cal|kcal)\s+(\d+(?:\.\d+)?)\s*P\s+(\d+(?:\.\d+)?)\s*G\s+(\d+(?:\.\d+)?)\s*C(?:\s+(\d+(?:\.\d+)?)\s*S)?(?:\s+(\d+(?:\.\d+)?)\s*F)?/i);
+  if(!m)return null;
+  return{alimento:m[1].trim(),estado:"Natural",kcal:+m[3],proteina_g:+m[4],grasas_g:+m[5],grasas_saturadas_g:0,carbs_g:+m[6],azucar_g:+(m[7]||0),fibra_g:+(m[8]||0),sodio_mg:0,colesterol_mg:0};
 };
 
 const analyzeFood=async(retryInput)=>{
   const foodText=retryInput||input.trim();
-  if(!foodText||!apiKey)return;
+  if(!foodText)return;
   setLoading(true);setParsedFood(null);setLoadStatus("");
   setLastAction({type:"food",input:foodText});
   if(!retryInput)setMsgs(prev=>[...prev,{role:"user",text:foodText}]);
   const r1=v=>Math.round((+v||0)*10)/10;
-  const cnKey=S.calorieNinjasKey||"";
 
   try{
-    /* ========== HYBRID MODE: CalorieNinjas (exact data) ========== */
-    if(cnKey){
-      /* Step 1: AI translates/parses Spanish → English with quantities */
-      setLoadStatus("🤖 Interpretando comida...");
-      const parsePrompt=`Convert this food description to English for a nutrition API query. Rules:
-1. Translate each food item to English with its quantity in grams
-2. If quantity is mentioned, keep it. If not, assume normal portions:
-   - 1 huevo/egg = 50g, 1 banano/banana = 120g, 1 pechuga/chicken breast = 150g
-   - 1 taza/cup arroz/rice (cooked) = 160g, 1 arepa = 100g, 1 pan/bread slice = 30g
-3. IMPORTANT: specify "cooked" or "raw" for meats, rice, pasta, beans (default to COOKED if not specified)
-4. Separate items with " and "
-5. Output ONLY the English query, nothing else
+    /* ===== COMMAND: agregar alimento ===== */
+    const addCmd=parseAddFoodCmd(foodText);
+    if(addCmd){
+      const newFoods=[...personalFoods,addCmd];
+      sv({...D,personalFoods:newFoods});
+      setMsgs(prev=>[...prev,{role:"ai",text:`✅ Alimento agregado a tu base de datos personal:\n\n📦 ${addCmd.alimento} (${addCmd.estado})\nPor 100g: ${addCmd.kcal}cal | ${addCmd.proteina_g}g P | ${addCmd.grasas_g}g G | ${addCmd.carbs_g}g C | ${addCmd.azucar_g}g S | ${addCmd.fibra_g}g F`}]);
+      setLoading(false);setInput("");setLoadStatus("");return;
+    }
 
-Examples:
-- "200g arroz con 150g pechuga" → "200g cooked white rice and 150g cooked chicken breast"
-- "2 huevos con arepa y café con leche" → "2 eggs and 100g corn arepa and 200ml coffee with whole milk"
-- "156g lomo fino" → "156g cooked beef tenderloin"
-- "pasta con carne molida" → "200g cooked pasta and 150g cooked ground beef"
-- "avena con banano y leche" → "60g oats and 1 banana and 200ml whole milk"
-
-Food: "${foodText}"`;
-      const enQuery=await callAI(parsePrompt,provider,apiKey,s=>setLoadStatus(s));
-      /* Aggressively clean AI response: strip markdown, quotes, explanatory text */
-      let cleanQuery=enQuery
-        .replace(/```[^`]*```/g,"")          /* remove code blocks */
-        .replace(/\*\*[^*]*\*\*/g,"")        /* remove bold markdown */
-        .replace(/^[^a-zA-Z0-9]*→\s*/gm,"") /* remove arrow prefixes */
-        .replace(/^(Here'?s?|The|Output|Result|Translation)[^:]*:\s*/gi,"") /* remove preamble */
-        .replace(/["'`]/g,"")                /* remove all quotes */
-        .replace(/\n/g," ")                  /* single line */
-        .replace(/\s{2,}/g," ")              /* collapse spaces */
-        .trim();
-      /* If still too long or looks wrong, take just the first meaningful line */
-      if(cleanQuery.length>500){
-        const lines=enQuery.split(/\n/).map(l=>l.replace(/["'`*→\->:]/g,"").trim()).filter(l=>l.length>5&&/\d/.test(l));
-        if(lines.length>0)cleanQuery=lines[0];
+    /* ===== COMMAND: eliminar alimento ===== */
+    if(foodText.match(/^eliminar\s+/i)){
+      const name=foodText.replace(/^eliminar\s+/i,"").trim();
+      const idx=personalFoods.findIndex(f=>normFood(f.alimento).includes(normFood(name)));
+      if(idx>=0){
+        const removed=personalFoods[idx];
+        const newFoods=[...personalFoods];newFoods.splice(idx,1);
+        sv({...D,personalFoods:newFoods});
+        setMsgs(prev=>[...prev,{role:"ai",text:`🗑️ Eliminado "${removed.alimento}" de tu base de datos personal.`}]);
+      }else{
+        setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No encontré "${name}" en tu base de datos personal.`}]);
       }
-      /* Last resort: cap at 1500 chars (CalorieNinjas limit) */
-      cleanQuery=cleanQuery.slice(0,1500);
-      /* If query is empty after cleaning, fall back to AI-only */
-      if(!cleanQuery||cleanQuery.length<3){await analyzeFoodAIOnly(foodText);setLoading(false);setInput("");setLoadStatus("");return}
+      setLoading(false);setInput("");setLoadStatus("");return;
+    }
 
-      /* Step 2: CalorieNinjas — wrap in try-catch so ANY failure falls back to AI */
-      let cnItems=[];
-      let cnOk=false;
-      try{
-        setLoadStatus("📊 Consultando base de datos USDA...");
-        cnItems=await callCalorieNinjas(cleanQuery,cnKey);
-        /* If CalorieNinjas returns empty, try simpler query */
-        if(cnItems.length===0){
-          setLoadStatus("📊 Reintentando consulta...");
-          const simpleQuery=cleanQuery.replace(/cooked |grilled |fried |baked |steamed /gi,"");
-          cnItems=await callCalorieNinjas(simpleQuery,cnKey);
-        }
-        cnOk=true;
-      }catch(cnErr){
-        console.warn("CalorieNinjas failed, falling back to AI:",cnErr.message);
-        cnItems=[];cnOk=false;
+    /* ===== COMMAND: mis alimentos / ver db ===== */
+    if(foodText.match(/^(mis alimentos|ver db|mi db|lista alimentos)/i)){
+      const total=personalFoods.length;
+      const ref=FOOD_DB.length;
+      let txt=`📦 Tu base de datos de alimentos:\n\n`;
+      txt+=`🔵 Referencia built-in: ${ref} alimentos\n`;
+      txt+=`🟢 Tus alimentos personales: ${total}\n\n`;
+      if(total>0){
+        txt+=`--- Personales ---\n`;
+        personalFoods.forEach(f=>{txt+=`• ${f.alimento} (${f.estado}): ${f.kcal}cal ${f.proteina_g}P ${f.grasas_g}G ${f.carbs_g}C ${f.azucar_g}S ${f.fibra_g}F\n`});
       }
+      txt+=`\n💡 Para agregar: "agregar [nombre] [100]g [cal]cal [P]P [G]G [C]C [S]S [F]F"`;
+      txt+=`\n💡 Para eliminar: "eliminar [nombre]"`;
+      setMsgs(prev=>[...prev,{role:"ai",text:txt}]);
+      setLoading(false);setInput("");setLoadStatus("");return;
+    }
 
-      if(cnOk&&cnItems.length>0){
-        /* Step 3: JavaScript processes results */
-        const food={cal:0,prot:0,fat:0,carbs:0,sugar:0,fiber:0,detail:""};
-        const lines=[];
-        cnItems.forEach(it=>{
-          const c=r1(it.cal),p=r1(it.prot),f=r1(it.fat),cb=r1(it.carbs),s=r1(it.sugar),fb=r1(it.fiber);
-          food.cal+=c;food.prot+=p;food.fat+=f;food.carbs+=cb;food.sugar+=s;food.fiber+=fb;
-          const srvNote=it.serving>0?` (${it.serving}g)`:"";
-          lines.push(`• ${it.name}${srvNote}: ${c}cal, ${p}g P, ${f}g G, ${cb}g C, ${s}g S, ${fb}g F 📊`);
-        });
-        food.cal=r1(food.cal);food.prot=r1(food.prot);food.fat=r1(food.fat);food.carbs=r1(food.carbs);food.sugar=r1(food.sugar);food.fiber=r1(food.fiber);
-        food.detail=lines.join("\n");
-        if(food.cal>0||food.prot>0){
-          setParsedFood(food);
-          setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Desglose (datos USDA):\n${lines.join("\n")}\n\n✅ Totales: ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S | ${food.fiber}g F\n\n📊 = datos exactos de base de datos USDA`}]);
-        } else {
-          setParsedFood(null);
-          setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ CalorieNinjas no encontró "${foodText}". Usando estimación IA...`}]);
-          await analyzeFoodAIOnly(foodText);
-        }
-      } else {
-        /* CalorieNinjas failed or returned nothing — AI-only mode */
-        await analyzeFoodAIOnly(foodText);
+    /* ===== MAIN FLOW: AI identifies food + grams → DB lookup → calculate ===== */
+    if(!apiKey){
+      setMsgs(prev=>[...prev,{role:"ai",text:`🔑 Configura tu API Key de ${provider==="groq"?"Groq":"Gemini"} para analizar comidas.`}]);
+      setLoading(false);setInput("");setLoadStatus("");return;
+    }
+
+    /* Build available foods list for AI */
+    const allFoodsForAI=[...personalFoods.map(f=>`${f.alimento} (${f.estado})`),...FOOD_DB.map(f=>`${f.alimento} (${f.estado})`)];
+    const uniqueFoods=[...new Set(allFoodsForAI)];
+
+    setLoadStatus("🤖 Identificando alimentos...");
+    const parsePrompt=`Eres un parser de comida. Tu ÚNICA tarea es identificar qué alimentos hay y cuántos gramos de cada uno.
+
+ALIMENTOS DISPONIBLES EN LA BASE DE DATOS:
+${uniqueFoods.join(", ")}
+
+REGLAS ESTRICTAS:
+1. Identifica cada alimento en la descripción del usuario
+2. Haz match con el nombre MÁS CERCANO de la lista de arriba
+3. Si el usuario dice cantidad, úsala. Si no, usa porción normal (ej: 1 huevo=50g, 1 arepa=100g, porción pollo=150g, porción arroz=200g)
+4. Para cada alimento indica el "estado" correcto (Cocido/Crudo/Natural/Polvo). Por defecto: carnes y granos = Cocido
+5. Si un alimento NO está en la lista, ponlo con found:false
+6. NO inventes macros ni calorías — solo identifica el alimento y los gramos
+
+EJEMPLOS:
+- "200g arroz con 150g pechuga" → items: arroz blanco 200g Cocido, pechuga pollo 150g Cocida
+- "2 huevos con arepa" → items: huevo entero 100g Natural, arepa blanca 100g Natural
+- "avena con miel y manzana" → items: avena 60g Cruda, miel 21g Natural, manzana 180g Natural
+- "30g whey con leche" → items: proteina whey 30g Polvo (leche no está en DB → found:false)
+
+Comida: "${foodText}"
+
+Responde SOLO JSON puro:
+{"items":[{"name":"nombre exacto de la lista","grams":0,"estado":"Cocido|Crudo|Natural|Polvo","found":true}]}`;
+
+    const resp=await callAI(parsePrompt,provider,apiKey,s=>setLoadStatus(s));
+    const jsonMatch=resp.match(/\{[\s\S]*\}/);
+    if(!jsonMatch){
+      setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ Error al interpretar. Intenta con algo más claro, ej: "200g arroz con 150g pollo"`}]);
+      setLoading(false);setInput("");setLoadStatus("");return;
+    }
+
+    const parsed=JSON.parse(jsonMatch[0]);
+    let items=parsed.items||[];
+    if(!Array.isArray(items))items=[];
+
+    setLoadStatus("📊 Buscando en base de datos...");
+
+    const food={cal:0,prot:0,fat:0,carbs:0,sugar:0,fiber:0,detail:""};
+    const lines=[];
+    const notFound=[];
+
+    items.forEach(it=>{
+      const grams=+(it.grams)||100;
+      const result=searchFoodMatch(it.name, personalFoods);
+
+      if(result){
+        const entry=result.match;
+        const factor=grams/100;
+        const c=r1(entry.kcal*factor);
+        const p=r1(entry.proteina_g*factor);
+        const f=r1(entry.grasas_g*factor);
+        const cb=r1(entry.carbs_g*factor);
+        const s=r1(entry.azucar_g*factor);
+        const fb=r1(entry.fibra_g*factor);
+        food.cal+=c;food.prot+=p;food.fat+=f;food.carbs+=cb;food.sugar+=s;food.fiber+=fb;
+        const srcTag=result.source==="personal"?"🟢":"🔵";
+        lines.push(`${srcTag} ${entry.alimento} (${entry.estado}) ${grams}g: ${c}cal, ${p}g P, ${f}g G, ${cb}g C, ${s}g S, ${fb}g F`);
+      }else{
+        notFound.push(it.name+(it.grams?` ${it.grams}g`:""));
       }
-    } else {
-      /* ========== AI-ONLY MODE (no CalorieNinjas key) ========== */
-      await analyzeFoodAIOnly(foodText);
+    });
+
+    food.cal=r1(food.cal);food.prot=r1(food.prot);food.fat=r1(food.fat);food.carbs=r1(food.carbs);food.sugar=r1(food.sugar);food.fiber=r1(food.fiber);
+    food.detail=lines.join("\n");
+
+    if(lines.length>0){
+      let msg=`🍽️ Desglose (datos exactos de tu DB):\n${lines.join("\n")}\n\n✅ Totales: ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S | ${food.fiber}g F`;
+      msg+=`\n\n🔵 = tabla referencia | 🟢 = tu DB personal`;
+      if(notFound.length>0){
+        msg+=`\n\n⚠️ No encontré en la DB: ${notFound.join(", ")}\n💡 Para agregar: "agregar [nombre] 100g [cal]cal [P]P [G]G [C]C"`;
+      }
+      setParsedFood(food);
+      setMsgs(prev=>[...prev,{role:"ai",text:msg}]);
+    }else if(notFound.length>0){
+      setParsedFood(null);
+      setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No encontré estos alimentos en la base de datos:\n${notFound.map(n=>`• ${n}`).join("\n")}\n\n💡 Puedes agregarlos con:\n"agregar [nombre] 100g [cal]cal [P]P [G]G [C]C [S]S [F]F"\n\nO usa el tab 📦 Alimentos para gestionar tu DB.`}]);
+    }else{
+      setParsedFood(null);
+      setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No pude identificar alimentos en "${foodText}". Intenta con algo como: "200g arroz con 150g pollo"`}]);
     }
   }catch(e){
     if(e.message&&e.message.startsWith("QUOTA|")){
@@ -1185,70 +1393,9 @@ Food: "${foodText}"`;
   setLoading(false);setInput("");setLoadStatus("");
 };
 
-/* AI-only food analysis (fallback when no CalorieNinjas key) */
-const analyzeFoodAIOnly=async(foodText)=>{
-  const r1=v=>Math.round((+v||0)*10)/10;
-  const dbResults=await searchFoodDB(foodText);
-  const dbSection=dbResults.length>0?`
-DATOS REALES (OpenFoodFacts) - PRIORIDAD:
-${dbResults.map((r,i)=>`${i+1}. "${r.name}"${r.brand?" ("+r.brand+")":""} → por 100g: ${r.cal100}cal, ${r.prot100}g prot, ${r.fat100}g grasa, ${r.carbs100}g carbs, ${r.sugar100}g azúcar, ${r.fiber100||0}g fibra`).join("\n")}
-Selecciona el producto que mejor coincida y calcula proporcionalmente.
-`:`No hay datos en base de datos. Usa la tabla de referencia.`;
-  setLoadStatus("🤖 Calculando macros...");
-  const prompt=`Eres un nutricionista. Calcula macros EXACTOS. CADA alimento DEBE tener calorías > 0.
-
-${dbSection}
-REFERENCIA (por 100g COCIDO/listo):
-CARNES: Pechuga pollo:165cal,31P,3.6G,0C | Lomo res/fino:160cal,28P,5G,0C | Molida 90/10:196cal,26P,10G,0C | Molida 80/20:254cal,26P,17G,0C | Cerdo:190cal,27P,8.5G,0C | Salmón:208cal,20P,13G,0C | Tilapia:128cal,26P,2.7G,0C | Atún lata:116cal,25.5P,0.8G,0C | Camarón:99cal,24P,0.3G,0C | Huevo(50g):72cal,6.3P,4.8G,0.4C | Clara(33g):17cal,3.6P,0.1G,0.2C | Whey(30g):120cal,24P,1.5G,3C
-CARBOS: Arroz cocido:130cal,2.7P,0.3G,28C | Pasta cocida:158cal,5.8P,0.9G,31C | Avena cruda:389cal,13.2P,6.5G,66C | Papa:87cal,1.9P,0.1G,20C | Yuca:160cal,1.4P,0.3G,38C | Pan blanco(30g):80cal,2.7P,1G,15C | Arepa(100g):200cal,4P,2G,43C
-OTROS: Banano(120g):105cal,1.3P,0.4G,27C | Aguacate:160cal,2P,15G,9C | Frijol:127cal,8.7P,0.5G,22C | Leche:61cal,3.2P,3.3G,4.8C | Yogurt griego:97cal,9P,5G,3.6C | Aceite(14g):120cal,0P,14G,0C
-
-REGLAS: 1)Cada item separado en "items" 2)Proporcional: (g/100)×valores 3)Sin cantidad=porción normal 4)cal≈(P×4+G×9+C×4)±10% 5)1 decimal 6)Incluir fiber 7)Cocido por defecto
-
-Comida: "${foodText}"
-JSON puro: {"items":[{"name":"...","cal":0,"prot":0,"fat":0,"carbs":0,"sugar":0,"fiber":0,"source":"ref"}]}`;
-  const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
-  const jsonMatch=resp.match(/\{[\s\S]*\}/);
-  if(jsonMatch){
-    const parsed=JSON.parse(jsonMatch[0]);
-    let items=parsed.items;
-    if(!items||!Array.isArray(items)){
-      items=[{name:foodText,cal:+parsed.cal||0,prot:+parsed.prot||0,fat:+parsed.fat||0,carbs:+parsed.carbs||0,sugar:+parsed.sugar||0,fiber:+parsed.fiber||0,source:"est"}];
-    }
-    items=items.map(it=>{
-      let c=+(it.cal)||0,p=+(it.prot)||0,f=+(it.fat)||0,cb=+(it.carbs)||0;
-      const expectedCal=(p*4)+(f*9)+(cb*4);
-      if(c===0&&expectedCal>0)c=expectedCal;
-      if(c>0&&expectedCal>0&&Math.abs(c-expectedCal)/expectedCal>0.5)c=Math.round(expectedCal*10)/10;
-      return{...it,cal:c};
-    });
-    const food={cal:0,prot:0,fat:0,carbs:0,sugar:0,fiber:0,detail:""};
-    const lines=[];
-    items.forEach(it=>{
-      const c=r1(it.cal),p=r1(it.prot),f=r1(it.fat),cb=r1(it.carbs),s=r1(it.sugar),fb=r1(it.fiber);
-      food.cal+=c;food.prot+=p;food.fat+=f;food.carbs+=cb;food.sugar+=s;food.fiber+=fb;
-      const src=it.source==="db"?" 🔬":"";
-      lines.push(`• ${it.name}: ${c}cal, ${p}g P, ${f}g G, ${cb}g C, ${s}g S, ${fb}g F${src}`);
-    });
-    food.cal=r1(food.cal);food.prot=r1(food.prot);food.fat=r1(food.fat);food.carbs=r1(food.carbs);food.sugar=r1(food.sugar);food.fiber=r1(food.fiber);
-    food.detail=lines.join("\n");
-    if(food.cal>0||food.prot>0){
-      setParsedFood(food);
-      const dbNote=dbResults.length>0?"\n\n🔬 = dato OpenFoodFacts":"";
-      setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Desglose (estimación IA):\n${lines.join("\n")}\n\n✅ Totales: ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S | ${food.fiber}g F${dbNote}\n\n💡 Tip: Agrega tu CalorieNinjas API Key en ⚙ para datos exactos USDA`}]);
-    }else{
-      setParsedFood(null);
-      setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No pude calcular macros para "${foodText}". Sé más específico (ej: "150g pechuga con 200g arroz")`}]);
-    }
-  } else {
-    setParsedFood(null);
-    setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ Error al procesar. Intenta con descripción más clara (ej: "200g arroz con 150g pollo")`}]);
-  }
-};
-
 const addFoodToLog=()=>{
   if(!parsedFood)return;
-  const entry={date:todayS(),week:`S${currentWeek}`,dayType:"dt2",weight:"",waist:"",cal:parsedFood.cal,prot:parsedFood.prot,fat:parsedFood.fat,carbs:parsedFood.carbs,sugar:parsedFood.sugar,fiber:parsedFood.fiber,steps:"",sleep:"",notes:"AI: "+input};
+  const entry={date:todayS(),week:`S${currentWeek}`,dayType:"dt2",weight:"",waist:"",cal:parsedFood.cal,prot:parsedFood.prot,fat:parsedFood.fat,carbs:parsedFood.carbs,sugar:parsedFood.sugar,fiber:parsedFood.fiber,steps:"",sleep:"",notes:"DB: "+(parsedFood.detail||"comida")};
   const existing=fl.findIndex(e=>e.date===todayS());
   const log=[...fl];
   if(existing>=0){
@@ -1326,7 +1473,7 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 <span style={{fontSize:"1.2rem"}}>🤖</span>
 <div style={{flex:1}}>
 <div style={{fontSize:"0.82rem",fontWeight:700}}>AI Coach</div>
-<div style={{fontSize:"0.55rem",color:C.t3}}>{provider==="groq"?"Groq / Llama 3 (gratis)":"Gemini (15 req/min)"} · {mode==="food"?(S.calorieNinjasKey?"🍽️ Comida (USDA)":"🍽️ Comida (IA)"):"💬 Consulta libre"}</div>
+<div style={{fontSize:"0.55rem",color:C.t3}}>{provider==="groq"?"Groq / Llama 3 (gratis)":"Gemini (15 req/min)"} · {mode==="food"?"🍽️ Comida (DB local)":mode==="foods"?"📦 Gestión alimentos":"💬 Consulta libre"}</div>
 </div>
 <button onClick={()=>setShowKey(!showKey)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"0.7rem"}}>🔑</button>
 <button onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"1rem"}}>✕</button>
@@ -1354,11 +1501,13 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 
 {/* Mode tabs */}
 <div style={{display:"flex",borderBottom:`1px solid ${C.b1}`}}>
-{[["food","🍽️ Comida"],["chat","💬 Consultar"],["prompt","📝 Mi Contexto"]].map(([m,l])=>(
-<button key={m} onClick={()=>{setMode(m);setParsedFood(null)}} style={{flex:1,padding:"8px",background:mode===m?C.bg3:"transparent",border:"none",borderBottom:mode===m?`2px solid ${C.purple}`:"2px solid transparent",color:mode===m?C.t0:C.t3,fontSize:"0.68rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+{[["food","🍽️ Comida"],["foods","📦 Alimentos"],["chat","💬 Consultar"],["prompt","📝 Mi Contexto"]].map(([m,l])=>(
+<button key={m} onClick={()=>{setMode(m);setParsedFood(null)}} style={{flex:1,padding:"8px",background:mode===m?C.bg3:"transparent",border:"none",borderBottom:mode===m?`2px solid ${C.purple}`:"2px solid transparent",color:mode===m?C.t0:C.t3,fontSize:"0.62rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
 ))}
 </div>
 
+{/* Food DB manager */}
+{mode==="foods"?<FoodDBManager personalFoods={personalFoods} onSave={(foods)=>sv({...D,personalFoods:foods})}/>:null}
 {/* Prompt editor */}
 {mode==="prompt"?<div style={{flex:1,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
 <div style={{fontSize:"0.75rem",color:C.t1,fontWeight:600}}>📝 Tu contexto personalizado</div>
@@ -1398,9 +1547,9 @@ sv({...D,settings:{...S,aiPrompt:current+separator+text.slice(0,8000)}});
 </div>
 </div>:null}
 {/* Messages */}
-{mode!=="prompt"&&<div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
+{mode!=="prompt"&&mode!=="foods"&&<div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
 {msgs.length===0&&<div style={{textAlign:"center",padding:"30px 10px",color:C.t3,fontSize:"0.75rem"}}>
-{mode==="food"?"🍽️ Escribe lo que comiste y te calculo los macros con 1 decimal de precisión.\n\nEjemplo: \"200g de pollo a la plancha con arroz y ensalada\"":"💬 Pregúntame lo que quieras: fitness, nutrición, proyectos, hábitos, libros, horario, productividad..."}
+{mode==="food"?`🍽️ Escribe lo que comiste y busco los macros exactos en tu base de datos.\n\nEjemplo: "200g pollo con arroz y ensalada"\n\n📦 Comandos especiales:\n• "agregar [nombre] 100g [cal]cal [P]P [G]G [C]C"\n• "eliminar [nombre]"\n• "mis alimentos"`:`💬 Pregúntame lo que quieras: fitness, nutrición, proyectos, hábitos, libros, horario, productividad...`}
 </div>}
 {msgs.map((m,i)=>(<div key={i} style={{alignSelf:m.role==="user"?"flex-end":"flex-start",maxWidth:"85%"}}>
 <div style={{padding:"8px 12px",borderRadius:m.role==="user"?"12px 12px 4px 12px":"12px 12px 12px 4px",background:m.role==="user"?C.purple+"25":m.retry?C.orange+"15":C.bg3,border:`1px solid ${m.role==="user"?C.purple+"40":m.retry?C.orange+"40":C.b1}`,fontSize:"0.76rem",color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.5}}>
@@ -1421,8 +1570,8 @@ sv({...D,settings:{...S,aiPrompt:current+separator+text.slice(0,8000)}});
 </div>}
 
 {/* Input */}
-{mode!=="prompt"&&<div style={{padding:"10px 14px",borderTop:`1px solid ${C.b1}`,background:C.bg2}}>
-{!apiKey?<div style={{fontSize:"0.7rem",color:C.orange,textAlign:"center",padding:6}}>🔑 Configura tu API Key de {provider==="groq"?"Groq":"Gemini"} arriba para empezar</div>:
+{mode!=="prompt"&&mode!=="foods"&&<div style={{padding:"10px 14px",borderTop:`1px solid ${C.b1}`,background:C.bg2}}>
+{!apiKey&&mode==="food"?<div style={{fontSize:"0.7rem",color:C.orange,textAlign:"center",padding:6}}>🔑 Configura tu API Key de {provider==="groq"?"Groq":"Gemini"} arriba para empezar</div>:
 <div style={{display:"flex",gap:6}}>
 <input style={{...z.inp,flex:1,fontSize:"0.78rem",padding:"8px 12px"}} value={input} onChange={e=>setInput(e.target.value)}
   placeholder={mode==="food"?"¿Qué comiste? Ej: 150g pollo con arroz...":"Pregunta lo que quieras: fitness, proyectos, hábitos..."}
@@ -1467,16 +1616,10 @@ return(<Mdl title="⚙ Configuración" onClose={onClose} ch={<div style={{displa
 <div style={{fontSize:"0.58rem",color:C.t3,marginTop:4}}>Obtén tu key gratis en <a href="https://console.groq.com/keys" target="_blank" style={{color:C.cyan}}>console.groq.com/keys</a> — Sin restricciones regionales</div>
 </div>}
 <div style={{marginTop:10,padding:"10px 12px",background:C.bg2,borderRadius:8,border:`1px solid ${C.b1}`}}>
-<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-<span style={{fontSize:"0.65rem",fontWeight:600,color:C.orange}}>📊 CalorieNinjas (macros exactos USDA)</span>
-<span style={{fontSize:"0.5rem",padding:"2px 6px",borderRadius:4,background:C.green+"25",color:C.green,fontWeight:600}}>RECOMENDADO</span>
+<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+<span style={{fontSize:"0.65rem",fontWeight:600,color:C.green}}>📦 Base de datos de alimentos</span>
 </div>
-<div style={{display:"flex",alignItems:"center",gap:10}}>
-<span style={{flex:1,fontSize:"0.75rem",color:C.t2}}>API Key</span>
-<input style={{...z.inpM,maxWidth:200}} type="password" value={f.calorieNinjasKey||""} onChange={e=>setF({...f,calorieNinjasKey:e.target.value})} placeholder="Tu API key..."/>
-</div>
-<div style={{fontSize:"0.55rem",color:C.t3,marginTop:4}}>Gratis (10,000/mes). Obtén tu key en <a href="https://calorieninjas.com/profile" target="_blank" style={{color:C.cyan}}>calorieninjas.com/profile</a></div>
-<div style={{fontSize:"0.55rem",color:C.t3,marginTop:2}}>Con esta key, los macros vienen de la base de datos USDA (exactos) en vez de estimaciones de IA</div>
+<div style={{fontSize:"0.58rem",color:C.t2}}>Los macros ahora vienen de tu base de datos local ({FOOD_DB.length} alimentos de referencia). Gestiona tus alimentos personales desde el botón 🤖 → pestaña 📦 Alimentos.</div>
 </div>
 <div style={{marginTop:10}}>
 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
