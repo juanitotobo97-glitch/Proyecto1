@@ -1125,18 +1125,25 @@ Food: "${foodText}"`;
       /* If query is empty after cleaning, fall back to AI-only */
       if(!cleanQuery||cleanQuery.length<3){await analyzeFoodAIOnly(foodText);setLoading(false);setInput("");setLoadStatus("");return}
 
-      /* Step 2: CalorieNinjas gets exact USDA macros */
-      setLoadStatus("📊 Consultando base de datos USDA...");
-      let cnItems=await callCalorieNinjas(cleanQuery,cnKey);
-
-      /* If CalorieNinjas returns empty, try simpler query */
-      if(cnItems.length===0){
-        setLoadStatus("📊 Reintentando consulta...");
-        const simpleQuery=cleanQuery.replace(/cooked |grilled |fried |baked |steamed /gi,"");
-        cnItems=await callCalorieNinjas(simpleQuery,cnKey);
+      /* Step 2: CalorieNinjas — wrap in try-catch so ANY failure falls back to AI */
+      let cnItems=[];
+      let cnOk=false;
+      try{
+        setLoadStatus("📊 Consultando base de datos USDA...");
+        cnItems=await callCalorieNinjas(cleanQuery,cnKey);
+        /* If CalorieNinjas returns empty, try simpler query */
+        if(cnItems.length===0){
+          setLoadStatus("📊 Reintentando consulta...");
+          const simpleQuery=cleanQuery.replace(/cooked |grilled |fried |baked |steamed /gi,"");
+          cnItems=await callCalorieNinjas(simpleQuery,cnKey);
+        }
+        cnOk=true;
+      }catch(cnErr){
+        console.warn("CalorieNinjas failed, falling back to AI:",cnErr.message);
+        cnItems=[];cnOk=false;
       }
 
-      if(cnItems.length>0){
+      if(cnOk&&cnItems.length>0){
         /* Step 3: JavaScript processes results */
         const food={cal:0,prot:0,fat:0,carbs:0,sugar:0,fiber:0,detail:""};
         const lines=[];
@@ -1153,11 +1160,11 @@ Food: "${foodText}"`;
           setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Desglose (datos USDA):\n${lines.join("\n")}\n\n✅ Totales: ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S | ${food.fiber}g F\n\n📊 = datos exactos de base de datos USDA`}]);
         } else {
           setParsedFood(null);
-          setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ CalorieNinjas no encontró "${foodText}". Intenta ser más específico (ej: "150g chicken breast with 200g rice")`}]);
+          setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ CalorieNinjas no encontró "${foodText}". Usando estimación IA...`}]);
+          await analyzeFoodAIOnly(foodText);
         }
       } else {
-        /* CalorieNinjas returned nothing — fall through to AI-only mode */
-        setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No se encontró en USDA. Usando estimación con IA...`}]);
+        /* CalorieNinjas failed or returned nothing — AI-only mode */
         await analyzeFoodAIOnly(foodText);
       }
     } else {
@@ -1165,11 +1172,7 @@ Food: "${foodText}"`;
       await analyzeFoodAIOnly(foodText);
     }
   }catch(e){
-    if(e.message==="CN_KEY_INVALID"){
-      setMsgs(prev=>[...prev,{role:"ai",text:`❌ API Key de CalorieNinjas inválida\n\nRevisa tu key en calorieninjas.com/profile`}]);
-    }else if(e.message==="CN_RATE_LIMIT"){
-      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Rate limit de CalorieNinjas (10,000/mes)\n\nEspera un momento y reintenta 🔄`,retry:true}]);
-    }else if(e.message.startsWith("QUOTA|")){
+    if(e.message&&e.message.startsWith("QUOTA|")){
       const isGroq=provider==="groq";
       setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`⏳ Rate limit de Groq\n\nEspera unos segundos y presiona 🔄`:`⏳ Rate limit de Google (429)\n\nEspera 2-3 min y presiona 🔄\nO cambia a Groq`,retry:true}]);
     }else if(e.message==="KEY_INVALID"){
