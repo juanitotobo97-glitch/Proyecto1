@@ -878,6 +878,7 @@ const callCalorieNinjas=async(query,cnKey)=>{
   if(!resp.ok){
     if(resp.status===401||resp.status===403)throw new Error("CN_KEY_INVALID");
     if(resp.status===429)throw new Error("CN_RATE_LIMIT");
+    if(resp.status===400)return[]; /* Bad query — return empty so fallback kicks in */
     throw new Error(`CalorieNinjas error: ${resp.status}`);
   }
   const data=await resp.json();
@@ -1104,7 +1105,25 @@ Examples:
 
 Food: "${foodText}"`;
       const enQuery=await callAI(parsePrompt,provider,apiKey,s=>setLoadStatus(s));
-      const cleanQuery=enQuery.replace(/^["'\s]+|["'\s]+$/g,"").replace(/\n/g," ").trim();
+      /* Aggressively clean AI response: strip markdown, quotes, explanatory text */
+      let cleanQuery=enQuery
+        .replace(/```[^`]*```/g,"")          /* remove code blocks */
+        .replace(/\*\*[^*]*\*\*/g,"")        /* remove bold markdown */
+        .replace(/^[^a-zA-Z0-9]*→\s*/gm,"") /* remove arrow prefixes */
+        .replace(/^(Here'?s?|The|Output|Result|Translation)[^:]*:\s*/gi,"") /* remove preamble */
+        .replace(/["'`]/g,"")                /* remove all quotes */
+        .replace(/\n/g," ")                  /* single line */
+        .replace(/\s{2,}/g," ")              /* collapse spaces */
+        .trim();
+      /* If still too long or looks wrong, take just the first meaningful line */
+      if(cleanQuery.length>500){
+        const lines=enQuery.split(/\n/).map(l=>l.replace(/["'`*→\->:]/g,"").trim()).filter(l=>l.length>5&&/\d/.test(l));
+        if(lines.length>0)cleanQuery=lines[0];
+      }
+      /* Last resort: cap at 1500 chars (CalorieNinjas limit) */
+      cleanQuery=cleanQuery.slice(0,1500);
+      /* If query is empty after cleaning, fall back to AI-only */
+      if(!cleanQuery||cleanQuery.length<3){await analyzeFoodAIOnly(foodText);setLoading(false);setInput("");setLoadStatus("");return}
 
       /* Step 2: CalorieNinjas gets exact USDA macros */
       setLoadStatus("📊 Consultando base de datos USDA...");
