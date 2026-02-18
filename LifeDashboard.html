@@ -137,7 +137,11 @@ const FOOD_DB=[
 {"alimento":"Quinua cocida","estado":"Natural","kcal":120,"proteina_g":4.4,"grasas_g":1.9,"grasas_saturadas_g":0.2,"carbs_g":21,"azucar_g":0.9,"fibra_g":2.8,"sodio_mg":7,"colesterol_mg":0},
 {"alimento":"Arepa blanca","estado":"Natural","kcal":218,"proteina_g":5,"grasas_g":2,"grasas_saturadas_g":0.4,"carbs_g":45,"azucar_g":1,"fibra_g":2,"sodio_mg":350,"colesterol_mg":0},
 {"alimento":"Manzana","estado":"Natural","kcal":52,"proteina_g":0.3,"grasas_g":0.2,"grasas_saturadas_g":0,"carbs_g":14,"azucar_g":10,"fibra_g":2.4,"sodio_mg":1,"colesterol_mg":0},
-{"alimento":"Fresa","estado":"Natural","kcal":32,"proteina_g":0.7,"grasas_g":0.3,"grasas_saturadas_g":0,"carbs_g":7.7,"azucar_g":4.9,"fibra_g":2,"sodio_mg":1,"colesterol_mg":0}
+{"alimento":"Fresa","estado":"Natural","kcal":32,"proteina_g":0.7,"grasas_g":0.3,"grasas_saturadas_g":0,"carbs_g":7.7,"azucar_g":4.9,"fibra_g":2,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Clara de huevo","estado":"Natural","kcal":52,"proteina_g":10.9,"grasas_g":0.2,"grasas_saturadas_g":0,"carbs_g":0.7,"azucar_g":0.7,"fibra_g":0,"sodio_mg":166,"colesterol_mg":0},
+{"alimento":"Huevo frito","estado":"Cocido","kcal":196,"proteina_g":13.6,"grasas_g":15,"grasas_saturadas_g":4.3,"carbs_g":0.8,"azucar_g":0.8,"fibra_g":0,"sodio_mg":207,"colesterol_mg":401},
+{"alimento":"Huevo revuelto","estado":"Cocido","kcal":166,"proteina_g":11.1,"grasas_g":12.2,"grasas_saturadas_g":3.9,"carbs_g":1.6,"azucar_g":1.4,"fibra_g":0,"sodio_mg":171,"colesterol_mg":356},
+{"alimento":"Banano","estado":"Natural","kcal":89,"proteina_g":1.1,"grasas_g":0.3,"grasas_saturadas_g":0.1,"carbs_g":23,"azucar_g":12,"fibra_g":2.6,"sodio_mg":1,"colesterol_mg":0}
 ];
 
 /* Food DB search: normalize text for fuzzy matching */
@@ -174,7 +178,11 @@ const FOOD_ALIASES={
   "quinua":"quinua cocida","quinoa":"quinua cocida",
   "arepa":"arepa blanca",
   "manzana":"manzana","apple":"manzana",
-  "fresa":"fresa","strawberry":"fresa","fresas":"fresa"
+  "fresa":"fresa","strawberry":"fresa","fresas":"fresa",
+  "clara":"clara de huevo","claras":"clara de huevo","clara de huevo":"clara de huevo","egg white":"clara de huevo",
+  "huevo frito":"huevo frito","frito":"huevo frito","fried egg":"huevo frito",
+  "huevo revuelto":"huevo revuelto","revueltos":"huevo revuelto","scrambled":"huevo revuelto",
+  "banano":"banano","banana":"banano","guineo":"banano","platano":"banano"
 };
 
 /* Search food in personal DB (priority 1) then reference table (priority 2).
@@ -225,10 +233,11 @@ const searchFoodMatch=(query, personalFoods)=>{
 
 /* Default portions (grams) when user doesn't specify */
 const DEFAULT_PORTIONS={
-  "huevo entero":50,"yema huevo":17,"aceite oliva":14,"crema de mani wake up":32,
+  "huevo entero":50,"yema huevo":17,"clara de huevo":33,"huevo frito":50,"huevo revuelto":50,
+  "aceite oliva":14,"crema de mani wake up":32,
   "pan integral":30,"arepa blanca":100,"manzana":180,"fresa":150,"miel":21,
   "chocolate 70%":30,"proteina whey":30,"chia":15,"almendras":30,"aguacate":80,
-  "queso mozzarella":30,"atun en agua":80,"atun en aceite":80
+  "queso mozzarella":30,"atun en agua":80,"atun en aceite":80,"banano":120
 };
 
 const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],fiberRange:[20,999],goalProfiles:DEF_GOALS,activeGoalProfile:"cut",geminiApiKey:"",groqApiKey:"",aiProvider:"gemini",aiPrompt:""};
@@ -1279,28 +1288,50 @@ const analyzeFood=async(retryInput)=>{
 
     setLoadStatus("🤖 Identificando alimentos...");
     const parsePrompt=`Eres un parser de comida. Tu ÚNICA tarea es identificar qué alimentos hay y cuántos gramos de cada uno.
+NO inventes macros ni calorías — solo parsea y mapea contra la lista.
 
-ALIMENTOS DISPONIBLES EN LA BASE DE DATOS:
+ALIMENTOS DISPONIBLES EN LA DB:
 ${uniqueFoods.join(", ")}
 
-REGLAS ESTRICTAS:
-1. Identifica cada alimento en la descripción del usuario
-2. Haz match con el nombre MÁS CERCANO de la lista de arriba
-3. Si el usuario dice cantidad, úsala. Si no, usa porción normal (ej: 1 huevo=50g, 1 arepa=100g, porción pollo=150g, porción arroz=200g)
-4. Para cada alimento indica el "estado" correcto (Cocido/Crudo/Natural/Polvo). Por defecto: carnes y granos = Cocido
-5. Si un alimento NO está en la lista, ponlo con found:false
-6. NO inventes macros ni calorías — solo identifica el alimento y los gramos
+REGLAS DE MATCH:
+1. Match EXACTO o sinónimo OBVIO del mismo alimento → found:true, "name" = nombre EXACTO de la lista
+   Ej: "pollo" → "Pechuga pollo" OK | "whey" → "Proteina Whey" OK
+2. PROHIBIDO match si cambia el alimento real:
+   - Diferente marca/sabor (yogurt alquería ≠ yogurt griego casero) → found:false
+   - Diferente parte (clara de huevo ≠ huevo entero ≠ yema huevo) → found:false
+   - Diferente tipo (integral vs blanco, light vs regular) → found:false
+3. Si un alimento NO está en la lista → found:false obligatorio. NO fuerces un match
+4. Productos comerciales que no están en la lista → found:false
+
+GRAMOS Y PORCIONES:
+- Si el usuario da gramos/ml → úsalos tal cual
+- Si da unidades, convierte a gramos:
+  1 huevo entero=50g | 1 clara=33g | 1 yema=17g | 1 huevo frito=50g | 1 huevo revuelto=50g
+  1 arepa=100g | 1 tajada pan=30g | 1 porción carne/pollo/pescado=150g
+  1 porción arroz/pasta=200g | 1 cucharada aceite/mantequilla=14g | 1 cucharada miel=21g
+  1 fruta mediana=180g | 1 banano=120g | 1 vaso leche=240g | 1 scoop whey=30g
+
+ESTADO:
+Usa el estado que aparece en la DB para ese alimento.
+Si no se especifica: carnes/granos=Cocido, frutas=Natural, suplementos=Polvo
 
 EJEMPLOS:
-- "200g arroz con 150g pechuga" → items: arroz blanco 200g Cocido, pechuga pollo 150g Cocida
-- "2 huevos con arepa" → items: huevo entero 100g Natural, arepa blanca 100g Natural
-- "avena con miel y manzana" → items: avena 60g Cruda, miel 21g Natural, manzana 180g Natural
-- "30g whey con leche" → items: proteina whey 30g Polvo (leche no está en DB → found:false)
+"200g arroz con 150g pechuga" →
+{"items":[{"name":"Arroz blanco","grams":200,"estado":"Cocido","found":true},{"name":"Pechuga pollo","grams":150,"estado":"Cocida","found":true}]}
+
+"3 claras y 1 huevo con arepa" →
+{"items":[{"name":"Clara de huevo","grams":99,"estado":"Natural","found":true},{"name":"Huevo entero","grams":50,"estado":"Natural","found":true},{"name":"Arepa blanca","grams":100,"estado":"Natural","found":true}]}
+
+"yogurt alquería con granola fitness" →
+{"items":[{"name":"yogurt alquería","grams":200,"estado":"Natural","found":false},{"name":"granola fitness","grams":60,"estado":"Natural","found":false}]}
+
+"almorcé bien" →
+{"items":[],"note":"No pude identificar alimentos específicos"}
 
 Comida: "${foodText}"
 
-Responde SOLO JSON puro:
-{"items":[{"name":"nombre exacto de la lista","grams":0,"estado":"Cocido|Crudo|Natural|Polvo","found":true}]}`;
+Responde SOLO JSON puro (sin markdown, sin backticks, sin texto extra):
+{"items":[{"name":"nombre exacto de la lista","grams":number,"estado":"string","found":boolean}]}`;
 
     const resp=await callAI(parsePrompt,provider,apiKey,s=>setLoadStatus(s));
     const jsonMatch=resp.match(/\{[\s\S]*\}/);
@@ -1321,6 +1352,13 @@ Responde SOLO JSON puro:
 
     items.forEach(it=>{
       const grams=+(it.grams)||100;
+
+      /* If AI explicitly says found:false, skip DB search — go straight to notFound */
+      if(it.found===false){
+        notFound.push(it.name+(it.grams?` ${it.grams}g`:""));
+        return;
+      }
+
       const result=searchFoodMatch(it.name, personalFoods);
 
       if(result){
