@@ -483,6 +483,12 @@ let yrTot=0,yrMax=0;for(let m=0;m<12;m++){const d2=new Date(curYr,m+1,0).getDate
 const addH=()=>{sv({...D,habits:[...habits,{id:uid(),name:"Nuevo hábito",emoji:"✅",meta:"Diario",active:true}]})};
 const updH=(i,u)=>{const h=[...habits];h[i]={...h[i],...u};sv({...D,habits:h})};
 const delH=i=>{const h=[...habits];h.splice(i,1);sv({...D,habits:h})};
+const[histWeekOff,setHistWeekOff]=useState(1);
+const maxOff=4;
+const getHistWeek=(off)=>{const dates=[];const now=new Date();const endDate=new Date(now);endDate.setDate(now.getDate()-off*7);const startDate=new Date(endDate);startDate.setDate(endDate.getDate()-6);for(let d=new Date(startDate);d<=endDate;d.setDate(d.getDate()+1))dates.push(fmtD(new Date(d)));return dates};
+const histDates=getHistWeek(histWeekOff);
+const histWkLabel=`${histDates[0].slice(5)} → ${histDates[histDates.length-1].slice(5)}`;
+const histDows=histDates.map(dt=>{const d=new Date(dt+"T12:00:00");return DOWS[d.getDay()===0?6:d.getDay()-1]});
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><div style={{fontSize:"1.3rem",fontWeight:700}}>🎯 Hábitos</div><button style={z.btn(true)} onClick={addH}>+ Hábito</button></div>
 <div style={{...z.card,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
@@ -509,27 +515,20 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <td style={{...z.td,textAlign:"center",fontFamily:"monospace",fontWeight:600}}>{wc}/7</td></tr>)})}</tbody></table></div></div>
 
 {/* === HISTORIAL ÚLTIMO MES === */}
-{(()=>{
-const[histWeekOff,setHistWeekOff]=useState(1);
-const getHistWeek=(off)=>{const dates=[];const now=new Date();const endDate=new Date(now);endDate.setDate(now.getDate()-off*7);const startDate=new Date(endDate);startDate.setDate(endDate.getDate()-6);for(let d=new Date(startDate);d<=endDate;d.setDate(d.getDate()+1))dates.push(fmtD(new Date(d)));return dates};
-const histDates=getHistWeek(histWeekOff);
-const maxOff=4;
-const histWkLabel=`${histDates[0].slice(5)} → ${histDates[histDates.length-1].slice(5)}`;
-const histDows=histDates.map(dt=>{const d=new Date(dt);return DOWS[d.getDay()===0?6:d.getDay()-1]});
-return(<div style={{...z.card,marginTop:4}}>
+<div style={{...z.card,marginTop:4}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap",gap:6}}>
 <div style={z.lb}>📅 Editar Historial (último mes)</div>
 <div style={{display:"flex",alignItems:"center",gap:6}}>
-<button style={z.btnS(false)} disabled={histWeekOff>=maxOff} onClick={()=>setHistWeekOff(Math.min(maxOff,histWeekOff+1))}>← Ant</button>
+<button style={z.btnS(false)} disabled={histWeekOff>=maxOff} onClick={()=>setHistWeekOff(o=>Math.min(maxOff,o+1))}>← Ant</button>
 <span style={{fontFamily:"monospace",fontSize:"0.68rem",color:C.cyan,fontWeight:600}}>{histWkLabel}</span>
-<button style={z.btnS(false)} disabled={histWeekOff<=1} onClick={()=>setHistWeekOff(Math.max(1,histWeekOff-1))}>Sig →</button>
+<button style={z.btnS(false)} disabled={histWeekOff<=1} onClick={()=>setHistWeekOff(o=>Math.max(1,o-1))}>Sig →</button>
 </div></div>
 <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:500}}>
 <thead><tr><th style={z.th}>Hábito</th>{histDates.map((dt,i)=><th key={i} style={{...z.th,textAlign:"center"}}><div>{histDows[i]}</div><div style={{fontSize:"0.45rem",color:C.t3}}>{dt.slice(5)}</div></th>)}<th style={{...z.th,textAlign:"center"}}>Score</th></tr></thead>
 <tbody>{activeH.map(h=>{let sc=0;histDates.forEach(dt=>{if(hw[`${dt}_${h.id}`])sc++});return(<tr key={h.id}><td style={{...z.td,fontWeight:500,fontSize:"0.72rem"}}>{h.emoji} {h.name}</td>
-{histDates.map((dt,i)=>{const key=`${dt}_${h.id}`;const done=hw[key];return<td key={i} style={{...z.td,textAlign:"center",cursor:"pointer",padding:"4px 2px"}} onClick={()=>{const n={...hw};n[key]=!done;sv({...D,habitWeekly:n})}}><span style={{display:"inline-block",width:24,height:24,borderRadius:6,lineHeight:"24px",fontSize:"0.66rem",background:done?C.cyan:C.bg3,color:done?C.bg0:C.t3,fontWeight:700}}>{done?"✓":""}</span></td>})}
+{histDates.map((dt,i)=>{const key=`${dt}_${h.id}`;const done=hw[key];return<td key={i} style={{...z.td,textAlign:"center",cursor:"pointer",padding:"4px 2px"}} onClick={e=>{e.stopPropagation();const n={...hw};n[key]=!done;sv({...D,habitWeekly:n})}}><span style={{display:"inline-block",width:24,height:24,borderRadius:6,lineHeight:"24px",fontSize:"0.66rem",background:done?C.cyan:C.bg3,color:done?C.bg0:C.t3,fontWeight:700}}>{done?"✓":""}</span></td>})}
 <td style={{...z.td,textAlign:"center",fontFamily:"monospace",fontWeight:600,color:C.cyan}}>{sc}/7</td></tr>)})}</tbody></table></div>
-</div>)})()}
+</div>
 
 {editH!==null&&hf&&<Mdl title="✏️ Hábito" onClose={saveHab} ch={<div style={{display:"flex",flexDirection:"column",gap:10}}>
 <G2><div><div style={{...z.lb,marginBottom:4}}>Emoji</div><input style={z.inp} value={hf.emoji} onChange={e=>setHf({...hf,emoji:e.target.value})}/></div><div><div style={{...z.lb,marginBottom:4}}>Nombre</div><input style={z.inp} value={hf.name} onChange={e=>setHf({...hf,name:e.target.value})}/></div></G2>
