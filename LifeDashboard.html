@@ -286,7 +286,7 @@ const G3=({children})=>(<div style={{display:"grid",gridTemplateColumns:"repeat(
 
 /* === FITNESS === */
 const FitnessPage=()=>{
-const[flM,setFlM]=useState(null);const[compM,setCompM]=useState(false);
+const[flM,setFlM]=useState(null);const[compM,setCompM]=useState(false);const[fitPage,setFitPage]=useState(0);
 const dateFrom=gFitFrom,setDateFrom=setGFitFrom,dateTo=gFitTo,setDateTo=setGFitTo;
 const ffl=fl.filter(e=>{if(dateFrom&&e.date<dateFrom)return false;if(dateTo&&e.date>dateTo)return false;return true});
 const fitCards=S.fitCards||["weight","waist","cal","steps"];
@@ -336,6 +336,12 @@ return(<Mdl title="⚙ Intervalos de Compliance" onClose={onClose} wide ch={<div
 <div style={{display:"flex",gap:8,marginTop:14}}><button style={z.btn(true)} onClick={()=>{const ndt=dayTypes.map(t=>{const r=dtRanges.find(d=>d.id===t.id);return r?{...t,calMin:r.calMin,calMax:r.calMax}:t});sv({...D,settings:{...S,...f},dayTypes:ndt});onClose()}}>Guardar</button><button style={z.btn(false)} onClick={onClose}>Cancelar</button></div>
 </div>}/>)};
 
+const PAGE_SIZE=10;
+const fflRev=[...ffl].reverse();
+const totalPg=Math.max(1,Math.ceil(fflRev.length/PAGE_SIZE));
+const safePg=Math.min(fitPage,totalPg-1);
+const fflPage=fflRev.slice(safePg*PAGE_SIZE,(safePg+1)*PAGE_SIZE);
+
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
 <div><div style={{fontSize:"1.3rem",fontWeight:700}}>🏋️ Mini-Cut Tracker</div><div style={{fontSize:"0.75rem",color:C.t3}}>{S.planGoal}</div></div>
@@ -373,9 +379,19 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 {[["P✓",S.protRange||[153,999],C.blue],["G✓",S.fatRange||[0,75],C.red],["C✓",S.carbRange||[0,999],C.green],["S✓",S.sugarRange||[0,40],C.pink]].map(([l,r,c])=><span key={l} style={{fontSize:"0.68rem",color:c,fontWeight:600}}>{l}:{r[0]}–{r[1]}g</span>)}
 <span style={{fontSize:"0.68rem",color:C.orange,fontWeight:600}}>K✓: por tipo</span>
 <span style={{fontSize:"0.68rem",color:C.t3}}>DÍA✓=4/5</span></div>
-<div style={z.card}><div style={z.lb}>📊 Progreso Semanal</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:750}}>
+<div style={z.card}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<div style={z.lb}>📊 Progreso Semanal</div>
+<div style={{display:"flex",alignItems:"center",gap:6}}>
+<button disabled={safePg<=0} onClick={()=>setFitPage(p=>Math.max(0,p-1))} style={{background:"none",border:`1px solid ${safePg>0?C.lime:C.b1}`,color:safePg>0?C.lime:C.t3,borderRadius:6,width:26,height:26,cursor:safePg>0?"pointer":"default",fontSize:"0.9rem",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>←</button>
+<span style={{fontFamily:"monospace",fontSize:"0.68rem",color:C.t2,minWidth:42,textAlign:"center"}}>{safePg+1} / {totalPg}</span>
+<button disabled={safePg>=totalPg-1} onClick={()=>setFitPage(p=>Math.min(totalPg-1,p+1))} style={{background:"none",border:`1px solid ${safePg<totalPg-1?C.lime:C.b1}`,color:safePg<totalPg-1?C.lime:C.t3,borderRadius:6,width:26,height:26,cursor:safePg<totalPg-1?"pointer":"default",fontSize:"0.9rem",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>→</button>
+<span style={{fontSize:"0.6rem",color:C.t3,marginLeft:4}}>{fflRev.length} reg.</span>
+</div>
+</div>
+<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:750}}>
 <thead><tr>{["Fecha","Tipo","Peso","Cintura","Cal","Prot","Grasa","Carbos","Azúcar","Pasos","P✓","G✓","C✓","S✓","K✓","DÍA"].map(h=><th key={h} style={{...z.th,padding:"5px 3px"}}>{h}</th>)}</tr></thead>
-<tbody>{ffl.map((e,i)=>{const oi=fl.indexOf(e);const comp=chkComp(e);const dt=getDT(e.dayType);return(<tr key={oi} style={{cursor:"pointer"}} onClick={()=>setFlM(oi)}>
+<tbody>{fflPage.map((e,i)=>{const oi=fl.indexOf(e);const comp=chkComp(e);const dt=getDT(e.dayType);return(<tr key={oi} style={{cursor:"pointer"}} onClick={()=>setFlM(oi)}>
 <td style={{...z.td,fontFamily:"monospace",fontSize:"0.68rem"}}>{e.date.slice(5)}</td><td style={z.td}>{dt.emoji}</td>
 <td style={{...z.td,fontFamily:"monospace",fontWeight:600}}>{e.weight||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.waist||"—"}</td>
 <td style={{...z.td,fontFamily:"monospace"}}>{e.cal||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.prot||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.fat||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.carbs||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.sugar||"—"}</td>
