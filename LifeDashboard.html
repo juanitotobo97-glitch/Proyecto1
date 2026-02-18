@@ -420,7 +420,7 @@ const G3=({children})=>(<div style={{display:"grid",gridTemplateColumns:"repeat(
 
 /* === FITNESS === */
 const FitnessPage=()=>{
-const[flM,setFlM]=useState(null);const[compM,setCompM]=useState(false);
+const[flM,setFlM]=useState(null);const[compM,setCompM]=useState(false);const[tblPage,setTblPage]=useState(0);
 const dateFrom=gFitFrom,setDateFrom=setGFitFrom,dateTo=gFitTo,setDateTo=setGFitTo;
 const ffl=fl.filter(e=>{if(dateFrom&&e.date<dateFrom)return false;if(dateTo&&e.date>dateTo)return false;return true});
 const fitCards=S.fitCards||["weight","waist","cal","steps"];
@@ -508,16 +508,16 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 {[["P✓",S.protRange||[153,999],C.blue],["G✓",S.fatRange||[0,75],C.red],["C✓",S.carbRange||[0,999],C.green],["S✓",S.sugarRange||[0,40],C.pink],["F✓",S.fiberRange||[20,999],C.amber]].map(([l,r,c])=><span key={l} style={{fontSize:"0.68rem",color:c,fontWeight:600}}>{l}:{r[0]}–{r[1]}g</span>)}
 <span style={{fontSize:"0.68rem",color:C.orange,fontWeight:600}}>K✓: por tipo</span>
 <span style={{fontSize:"0.68rem",color:C.t3}}>DÍA✓=4/6</span></div>
-<div style={z.card}><div style={z.lb}>📊 Progreso Semanal</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:750}}>
-<thead><tr>{["Fecha","Tipo","Peso","Cintura","Cal","Prot","Grasa","Carbos","Azúcar","Fibra","Pasos","P✓","G✓","C✓","S✓","F✓","K✓","DÍA"].map(h=><th key={h} style={{...z.th,padding:"5px 3px"}}>{h}</th>)}</tr></thead>
-<tbody>{ffl.map((e,i)=>{const oi=fl.indexOf(e);const comp=chkComp(e);const dt=getDT(e.dayType);return(<tr key={oi} style={{cursor:"pointer"}} onClick={()=>setFlM(oi)}>
+{(()=>{const PAGE_SIZE=10;const totalPages=Math.max(1,Math.ceil(ffl.length/PAGE_SIZE));const safePage=Math.min(tblPage,totalPages-1);const pageData=ffl.slice(safePage*PAGE_SIZE,(safePage+1)*PAGE_SIZE);return(<div style={z.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><div style={z.lb}>📊 Progreso Semanal</div><div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={()=>setTblPage(Math.max(0,safePage-1))} disabled={safePage===0} style={{background:"none",border:`1px solid ${safePage===0?C.b1:C.lime}`,borderRadius:6,color:safePage===0?C.t3:C.lime,cursor:safePage===0?"default":"pointer",padding:"4px 10px",fontSize:"0.72rem",fontWeight:700,fontFamily:"inherit"}}>◀</button><span style={{fontSize:"0.65rem",color:C.t2,fontFamily:"monospace"}}>{safePage+1}/{totalPages}</span><button onClick={()=>setTblPage(Math.min(totalPages-1,safePage+1))} disabled={safePage>=totalPages-1} style={{background:"none",border:`1px solid ${safePage>=totalPages-1?C.b1:C.lime}`,borderRadius:6,color:safePage>=totalPages-1?C.t3:C.lime,cursor:safePage>=totalPages-1?"default":"pointer",padding:"4px 10px",fontSize:"0.72rem",fontWeight:700,fontFamily:"inherit"}}>▶</button></div></div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:750}}>
+<thead style={{position:"sticky",top:0,zIndex:1,background:C.bg1}}><tr>{["Fecha","Tipo","Peso","Cintura","Cal","Prot","Grasa","Carbos","Azúcar","Fibra","Pasos","P✓","G✓","C✓","S✓","F✓","K✓","DÍA"].map(h=><th key={h} style={{...z.th,padding:"5px 3px"}}>{h}</th>)}</tr></thead>
+<tbody>{pageData.map((e,i)=>{const oi=fl.indexOf(e);const comp=chkComp(e);const dt=getDT(e.dayType);return(<tr key={oi} style={{cursor:"pointer"}} onClick={()=>setFlM(oi)}>
 <td style={{...z.td,fontFamily:"monospace",fontSize:"0.68rem"}}>{e.date.slice(5)}</td><td style={z.td}>{dt.emoji}</td>
 <td style={{...z.td,fontFamily:"monospace",fontWeight:600}}>{e.weight||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.waist||"—"}</td>
 <td style={{...z.td,fontFamily:"monospace"}}>{e.cal||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.prot||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.fat||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.carbs||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.sugar||"—"}</td><td style={{...z.td,fontFamily:"monospace",color:C.amber}}>{e.fiber||"—"}</td>
 <td style={{...z.td,fontFamily:"monospace"}}>{(+e.steps||0).toLocaleString()}</td>
 {[comp.p,comp.g,comp.c,comp.s,comp.fb,comp.k].map((v,j)=><td key={j} style={{...z.td,textAlign:"center"}}><span style={{color:v?C.green:C.red,fontWeight:700}}>{v?"✓":"✗"}</span></td>)}
 <td style={{...z.td,textAlign:"center"}}><span style={{color:comp.day?C.green:C.red,fontWeight:800,fontSize:"0.85rem"}}>{comp.day?"✓":"✗"}</span></td>
-</tr>)})}</tbody></table></div></div>
+</tr>)})}</tbody></table></div></div>)})()}
 {ffl.filter(e=>e.notes).length>0&&<div style={z.card}><div style={z.lb}>📝 Notas</div>{ffl.filter(e=>e.notes).slice(-5).reverse().map((e,i)=>(<div key={i} style={{padding:"7px 0",borderBottom:`1px solid ${C.b1}`}}><span style={{fontFamily:"monospace",fontSize:"0.65rem",color:C.t3}}>{e.date}</span> {getDT(e.dayType).emoji}<div style={{fontSize:"0.8rem",color:C.t1,marginTop:3}}>{e.notes}</div></div>))}</div>}
 {flM==="new"&&<FlModal idx={null} onClose={()=>setFlM(null)}/>}
 {typeof flM==="number"&&<FlModal idx={flM} onClose={()=>setFlM(null)}/>}
@@ -787,17 +787,12 @@ const activeH=habits.filter(h=>h.active);
 const rDates=rfl.length>0?rfl.map(e=>e.date):getWk();
 let habTot=0,habMax=0;activeH.forEach(h=>{rDates.forEach(dt=>{habMax++;if(hw[`${dt}_${h.id}`])habTot++})});
 const habPct=habMax>0?Math.round(habTot/habMax*100):0;
-const rptCards=RPT_METRICS.map(m=>m.id);
-const rptCharts=S.rptCharts||["cal","prot"];
-const setRChart=(idx,mid)=>{const nc=[...rptCharts];nc[idx]=mid;sv({...D,settings:{...S,rptCharts:nc}})};
-const addRChart=()=>{const avail=TREND_METRICS.find(m=>!rptCharts.includes(m.id));if(avail)sv({...D,settings:{...S,rptCharts:[...rptCharts,avail.id]}})};
-const rmRChart=idx=>{if(rptCharts.length<=1)return;const nc=[...rptCharts];nc.splice(idx,1);sv({...D,settings:{...S,rptCharts:nc}})};
 const[copied,setCopied]=useState(false);
 const periodLabel=(rDateFrom||rDateTo)?`${rDateFrom||"inicio"} → ${rDateTo||"hoy"}`:"Última semana";
 const rpt=`📊 REPORTE — ${S.planName}\n${"─".repeat(35)}\n📅 Periodo: ${periodLabel} (${dataSet.length} días)\n\n🏋️ FITNESS\n${RPT_METRICS.map(m=>`• ${m.txt(dataSet)}`).join("\n")}\n\n🎯 HÁBITOS: ${habPct}%\n${activeH.map(h=>{let c=0;rDates.forEach(dt=>{if(hw[`${dt}_${h.id}`])c++});return`• ${h.emoji} ${h.name}: ${c}/${rDates.length}`}).join("\n")}\n\n📂 PROYECTOS\n${projects.map(p=>`• ${p.name}: ${p.progress}% — ${p.status}`).join("\n")}\n\n📚 LECTURA\n${books.filter(b=>b.status==="reading").map(b=>`• ${b.title}: ${b.progress}%`).join("\n")}\n\n📅 ${new Date().toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"})}`;
 const copy=()=>{navigator.clipboard.writeText(rpt).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})};
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📋 Reporte</div><div style={{display:"flex",gap:6}}>{rptCharts.length<TREND_METRICS.length&&<button style={z.btnS(false)} onClick={addRChart}>+ Gráfica</button>}<button style={z.btn(true)} onClick={copy}>{copied?"✓ Copiado!":"📋 Copiar"}</button></div></div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📋 Reporte</div><button style={z.btn(true)} onClick={copy}>{copied?"✓ Copiado!":"📋 Copiar"}</button></div>
 <div style={{...z.card,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
 <span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
 <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -811,23 +806,6 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 {(rDateFrom||rDateTo)&&<button style={{...z.btnS(false),padding:"4px 10px",fontSize:"0.65rem"}} onClick={()=>{setRDateFrom("");setRDateTo("")}}>✕ Reset</button>}
 {(rDateFrom||rDateTo)&&<span style={{fontSize:"0.63rem",color:C.lime,fontWeight:600}}>{rfl.length} días</span>}
 </div>
-<G3>{rptCards.map((mid,ci)=>{const m=RPT_METRICS.find(x=>x.id===mid)||RPT_METRICS[0];const val=m.calc(dataSet);return(<div key={ci} style={z.card}>
-<div style={{fontSize:"0.6rem",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",color:m.color,marginBottom:4}}>{m.em} {m.lb}</div>
-<div style={z.big}>{val}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>{m.unit}</div></div>)})}</G3>
-<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>{rptCharts.map((mid,ci)=>{const m=TREND_METRICS.find(x=>x.id===mid)||TREND_METRICS[0];
-const pts=dataSet.filter(m.filter).map(e=>({v:+e[m.key],label:e.date.slice(5)}));
-const avg7=movAvg(dataSet.filter(m.filter),m.key);
-return(<div key={ci} style={z.card}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-<select style={{background:"transparent",border:"none",color:m.color,fontSize:"0.6rem",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",cursor:"pointer",padding:0,fontFamily:"inherit",outline:"none",appearance:"auto",WebkitAppearance:"menulist",colorScheme:"dark"}} value={mid} onChange={e=>setRChart(ci,e.target.value)}>
-{TREND_METRICS.map(o=><option key={o.id} value={o.id}>{o.lb} ({o.unit})</option>)}
-</select>
-<div style={{display:"flex",alignItems:"center",gap:6}}>
-<span style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></span>
-{rptCharts.length>1&&<button style={{background:"none",border:"none",color:C.red+"55",cursor:"pointer",fontSize:"0.55rem"}} onClick={()=>rmRChart(ci)}>✕</button>}
-</div></div>
-<Chart pts={pts} pts2={avg7} color={m.color} color2={C.orange} h={130}/>
-</div>)})}</div>
 <div style={z.card}><div style={z.lb}>Vista previa</div><pre style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:"0.7rem",color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.7,background:C.bg0,padding:14,borderRadius:10,border:`1px solid ${C.b1}`,overflowX:"auto"}}>{rpt}</pre></div>
 </div>)};
 
@@ -1150,6 +1128,7 @@ const[loading,setLoading]=useState(false);
 const[loadStatus,setLoadStatus]=useState("");
 const[msgs,setMsgs]=useState([]);
 const[parsedFood,setParsedFood]=useState(null);
+const[foodDate,setFoodDate]=useState(todayS());
 const provider=S.aiProvider||"gemini";
 const curKey=provider==="groq"?(S.groqApiKey||""):(S.geminiApiKey||"");
 const[keyInput,setKeyInput]=useState(curKey);
@@ -1395,14 +1374,20 @@ Responde SOLO JSON puro:
 
 const addFoodToLog=()=>{
   if(!parsedFood)return;
-  const entry={date:todayS(),week:`S${currentWeek}`,dayType:"dt2",weight:"",waist:"",cal:parsedFood.cal,prot:parsedFood.prot,fat:parsedFood.fat,carbs:parsedFood.carbs,sugar:parsedFood.sugar,fiber:parsedFood.fiber,steps:"",sleep:"",notes:"DB: "+(parsedFood.detail||"comida")};
-  const existing=fl.findIndex(e=>e.date===todayS());
+  const targetDate=foodDate||todayS();
+  const targetDateObj=new Date(targetDate+"T00:00:00");
+  const startDateObj=new Date(S.startDate+"T00:00:00");
+  const weekNum=Math.min(Math.ceil((Math.floor((targetDateObj-startDateObj)/86400000)+1)/7),S.cutWeeks);
+  const entry={date:targetDate,week:`S${weekNum}`,dayType:"dt2",weight:"",waist:"",cal:parsedFood.cal,prot:parsedFood.prot,fat:parsedFood.fat,carbs:parsedFood.carbs,sugar:parsedFood.sugar,fiber:parsedFood.fiber,steps:"",sleep:"",notes:"DB: "+(parsedFood.detail||"comida")};
+  const existing=fl.findIndex(e=>e.date===targetDate);
   const log=[...fl];
+  const isToday=targetDate===todayS();
+  const dateLabel=isToday?"hoy":targetDate;
   if(existing>=0){
     log[existing]={...log[existing],cal:(+log[existing].cal||0)+parsedFood.cal,prot:(+log[existing].prot||0)+parsedFood.prot,fat:(+log[existing].fat||0)+parsedFood.fat,carbs:(+log[existing].carbs||0)+parsedFood.carbs,sugar:(+log[existing].sugar||0)+parsedFood.sugar,fiber:(+log[existing].fiber||0)+parsedFood.fiber,notes:log[existing].notes?(log[existing].notes+"; AI: "+parsedFood.detail):("AI: "+parsedFood.detail)};
   } else { log.push(entry);log.sort((a,b)=>a.date.localeCompare(b.date)); }
   sv({...D,fitnessLog:log});
-  setMsgs(prev=>[...prev,{role:"ai",text:"✅ Registrado en fitness log"+(existing>=0?" (sumado al registro existente de hoy)":"")}]);
+  setMsgs(prev=>[...prev,{role:"ai",text:`✅ Registrado en fitness log (${dateLabel})`+(existing>=0?" — sumado al registro existente":"")}]);
   setParsedFood(null);
 };
 
@@ -1565,7 +1550,11 @@ sv({...D,settings:{...S,aiPrompt:current+separator+text.slice(0,8000)}});
 <div key={l} style={{textAlign:"center"}}><div style={{fontSize:"0.5rem",color:c,fontWeight:600}}>{l}</div><div style={{fontFamily:"monospace",fontSize:"0.78rem",fontWeight:700}}>{v}</div></div>
 ))}
 </div>
-<button style={{...z.btn(true),width:"100%",padding:"6px"}} onClick={addFoodToLog}>✅ Agregar al registro de hoy</button>
+<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+<span style={{fontSize:"0.62rem",color:C.t2,fontWeight:600}}>📅 Fecha:</span>
+<input type="date" style={{...z.inpM,padding:"3px 6px",fontSize:"0.68rem",flex:1,colorScheme:"dark"}} value={foodDate} onChange={e=>setFoodDate(e.target.value)}/>
+</div>
+<button style={{...z.btn(true),width:"100%",padding:"6px"}} onClick={addFoodToLog}>✅ Agregar al registro {foodDate===todayS()?"de hoy":`del ${foodDate}`}</button>
 </div>}
 </div>}
 
