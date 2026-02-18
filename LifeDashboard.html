@@ -1315,9 +1315,14 @@ ESTADO:
 Usa el estado que aparece en la DB para ese alimento.
 Si no se especifica: carnes/granos=Cocido, frutas=Natural, suplementos=Polvo
 
+IMPORTANTE: "clara" = "Clara de huevo" (solo la clara, SIN yema). "huevo" o "huevo entero" = "Huevo entero" (entero con yema). SON ALIMENTOS DIFERENTES con macros MUY distintos. NUNCA confundirlos.
+
 EJEMPLOS:
 "200g arroz con 150g pechuga" →
 {"items":[{"name":"Arroz blanco","grams":200,"estado":"Cocido","found":true},{"name":"Pechuga pollo","grams":150,"estado":"Cocida","found":true}]}
+
+"5 huevos (2 enteros y 3 claras)" →
+{"items":[{"name":"Huevo entero","grams":100,"estado":"Natural","found":true},{"name":"Clara de huevo","grams":99,"estado":"Natural","found":true}]}
 
 "3 claras y 1 huevo con arepa" →
 {"items":[{"name":"Clara de huevo","grams":99,"estado":"Natural","found":true},{"name":"Huevo entero","grams":50,"estado":"Natural","found":true},{"name":"Arepa blanca","grams":100,"estado":"Natural","found":true}]}
@@ -1343,6 +1348,31 @@ Responde SOLO JSON puro (sin markdown, sin backticks, sin texto extra):
     const parsed=JSON.parse(jsonMatch[0]);
     let items=parsed.items||[];
     if(!Array.isArray(items))items=[];
+
+    /* Post-process: fix known AI confusion between egg variants.
+       Llama3/Groq often maps "claras" → "Huevo entero" incorrectly.
+       Use gram-distance heuristic: 1 clara=33g, 1 entero=50g, 1 yema=17g */
+    const _ft=normFood(foodText);
+    if(/\bclara[s]?\b/.test(_ft)&&!items.some(it=>normFood(it.name).includes("clara"))){
+      items=items.map(it=>{
+        if(!normFood(it.name).includes("huevo"))return it;
+        const g=+(it.grams)||100;
+        const dC=Math.abs(g-Math.round(g/33)*33);
+        const dE=Math.abs(g-Math.round(g/50)*50);
+        if(dC<dE)return{...it,name:"Clara de huevo",estado:"Natural"};
+        return it;
+      });
+    }
+    if(/\byema[s]?\b/.test(_ft)&&!items.some(it=>normFood(it.name).includes("yema"))){
+      items=items.map(it=>{
+        if(!normFood(it.name).includes("huevo"))return it;
+        const g=+(it.grams)||100;
+        const dY=Math.abs(g-Math.round(g/17)*17);
+        const dE=Math.abs(g-Math.round(g/50)*50);
+        if(dY<dE)return{...it,name:"Yema huevo",estado:"Natural"};
+        return it;
+      });
+    }
 
     setLoadStatus("📊 Buscando en base de datos...");
 
