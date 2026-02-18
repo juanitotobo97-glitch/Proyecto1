@@ -86,19 +86,341 @@ const KEY="life-dashboard";
 
 /* === DEFAULTS === */
 const DEF_DT=[
-{id:"dt1",name:"Descanso",emoji:"😴",color:"#a78bfa",cal:2250,prot:170,carbs:220,fat:65,sugar:40,calMin:2250,calMax:2350},
-{id:"dt2",name:"Pesas",emoji:"🏋️",color:"#b8f000",cal:2250,prot:180,carbs:260,fat:65,sugar:40,calMin:2250,calMax:2350},
-{id:"dt3",name:"Tenis/Padel",emoji:"🎾",color:"#5b9df5",cal:2250,prot:170,carbs:260,fat:65,sugar:40,calMin:2250,calMax:2350},
-{id:"dt4",name:"Golf",emoji:"⛳",color:"#34d399",cal:2250,prot:160,carbs:240,fat:65,sugar:40,calMin:2250,calMax:2350},
-{id:"dt5",name:"Pesas+Tenis/Padel",emoji:"💪🎾",color:"#22d3ee",cal:2500,prot:180,carbs:280,fat:70,sugar:40,calMin:2500,calMax:2600},
-{id:"dt6",name:"Pesas+Golf",emoji:"💪⛳",color:"#f5a623",cal:2750,prot:180,carbs:300,fat:70,sugar:40,calMin:2750,calMax:2850}];
+{id:"dt1",name:"Descanso",emoji:"😴",color:"#a78bfa",cal:2250,prot:170,carbs:220,fat:65,sugar:40,fiber:25,calMin:2250,calMax:2350},
+{id:"dt2",name:"Pesas",emoji:"🏋️",color:"#b8f000",cal:2250,prot:180,carbs:260,fat:65,sugar:40,fiber:25,calMin:2250,calMax:2350},
+{id:"dt3",name:"Tenis/Padel",emoji:"🎾",color:"#5b9df5",cal:2250,prot:170,carbs:260,fat:65,sugar:40,fiber:25,calMin:2250,calMax:2350},
+{id:"dt4",name:"Golf",emoji:"⛳",color:"#34d399",cal:2250,prot:160,carbs:240,fat:65,sugar:40,fiber:25,calMin:2250,calMax:2350},
+{id:"dt5",name:"Pesas+Tenis/Padel",emoji:"💪🎾",color:"#22d3ee",cal:2500,prot:180,carbs:280,fat:70,sugar:40,fiber:30,calMin:2500,calMax:2600},
+{id:"dt6",name:"Pesas+Golf",emoji:"💪⛳",color:"#f5a623",cal:2750,prot:180,carbs:300,fat:70,sugar:40,fiber:30,calMin:2750,calMax:2850}];
 
 const DEF_GOALS=[
-{id:"cut",name:"Cutting",cal:2250,prot:170,fat:65,carbs:220,sugar:40,trainingPerWeek:5},
-{id:"bulk",name:"Bulking",cal:3000,prot:180,fat:80,carbs:350,sugar:50,trainingPerWeek:5},
-{id:"mantenimiento",name:"Mantenimiento",cal:2500,prot:170,fat:70,carbs:280,sugar:45,trainingPerWeek:4},
-{id:"personalizado",name:"Personalizado",cal:2250,prot:170,fat:65,carbs:220,sugar:40,trainingPerWeek:5}];
-const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],goalProfiles:DEF_GOALS,activeGoalProfile:"cut",geminiApiKey:"",aiPrompt:""};
+{id:"cut",name:"Cutting",cal:2250,prot:170,fat:65,carbs:220,sugar:40,fiber:25,trainingPerWeek:5},
+{id:"bulk",name:"Bulking",cal:3000,prot:180,fat:80,carbs:350,sugar:50,fiber:30,trainingPerWeek:5},
+{id:"mantenimiento",name:"Mantenimiento",cal:2500,prot:170,fat:70,carbs:280,sugar:45,fiber:25,trainingPerWeek:4},
+{id:"personalizado",name:"Personalizado",cal:2250,prot:170,fat:65,carbs:220,sugar:40,fiber:25,trainingPerWeek:5}];
+
+/* === BUILT-IN FOOD REFERENCE TABLE (per 100g) === */
+const FOOD_DB=[
+/* ===== COMIDA COLOMBIANA TÍPICA (por 100g) ===== */
+/* -- Arepas y masas -- */
+{"alimento":"Arepa blanca maíz","estado":"Natural","kcal":218,"proteina_g":5,"grasas_g":2,"grasas_saturadas_g":0.4,"carbs_g":45,"azucar_g":1,"fibra_g":2,"sodio_mg":350,"colesterol_mg":0},
+{"alimento":"Arepa de choclo","estado":"Natural","kcal":250,"proteina_g":5,"grasas_g":7,"grasas_saturadas_g":3,"carbs_g":42,"azucar_g":8,"fibra_g":2,"sodio_mg":280,"colesterol_mg":10},
+{"alimento":"Arepa de queso","estado":"Natural","kcal":270,"proteina_g":8,"grasas_g":9,"grasas_saturadas_g":4,"carbs_g":40,"azucar_g":2,"fibra_g":2,"sodio_mg":450,"colesterol_mg":15},
+{"alimento":"Arepa de huevo","estado":"Frita","kcal":310,"proteina_g":9,"grasas_g":15,"grasas_saturadas_g":4,"carbs_g":35,"azucar_g":1,"fibra_g":2,"sodio_mg":380,"colesterol_mg":95},
+{"alimento":"Empanada colombiana","estado":"Frita","kcal":210,"proteina_g":5,"grasas_g":10,"grasas_saturadas_g":3,"carbs_g":25,"azucar_g":1,"fibra_g":2,"sodio_mg":320,"colesterol_mg":15},
+{"alimento":"Empanada de pollo","estado":"Frita","kcal":220,"proteina_g":8,"grasas_g":11,"grasas_saturadas_g":3,"carbs_g":22,"azucar_g":1,"fibra_g":2,"sodio_mg":340,"colesterol_mg":25},
+{"alimento":"Buñuelo","estado":"Frito","kcal":350,"proteina_g":8,"grasas_g":18,"grasas_saturadas_g":5,"carbs_g":40,"azucar_g":3,"fibra_g":1,"sodio_mg":400,"colesterol_mg":20},
+{"alimento":"Pandebono","estado":"Natural","kcal":320,"proteina_g":7,"grasas_g":12,"grasas_saturadas_g":5,"carbs_g":45,"azucar_g":5,"fibra_g":1,"sodio_mg":380,"colesterol_mg":25},
+{"alimento":"Almojábana","estado":"Natural","kcal":310,"proteina_g":8,"grasas_g":10,"grasas_saturadas_g":4,"carbs_g":47,"azucar_g":6,"fibra_g":1,"sodio_mg":360,"colesterol_mg":20},
+{"alimento":"Pan de bono","estado":"Natural","kcal":320,"proteina_g":7,"grasas_g":12,"grasas_saturadas_g":5,"carbs_g":45,"azucar_g":5,"fibra_g":1,"sodio_mg":380,"colesterol_mg":25},
+{"alimento":"Patacón","estado":"Frito","kcal":270,"proteina_g":1.5,"grasas_g":12,"grasas_saturadas_g":3,"carbs_g":40,"azucar_g":2,"fibra_g":3,"sodio_mg":200,"colesterol_mg":0},
+{"alimento":"Dedito de queso","estado":"Frito","kcal":330,"proteina_g":10,"grasas_g":18,"grasas_saturadas_g":7,"carbs_g":32,"azucar_g":1,"fibra_g":1,"sodio_mg":450,"colesterol_mg":25},
+/* -- Platos principales colombianos -- */
+{"alimento":"Bandeja paisa","estado":"Natural","kcal":220,"proteina_g":11,"grasas_g":11,"grasas_saturadas_g":4,"carbs_g":20,"azucar_g":2,"fibra_g":4,"sodio_mg":350,"colesterol_mg":50},
+{"alimento":"Ajiaco bogotano","estado":"Natural","kcal":70,"proteina_g":5,"grasas_g":2,"grasas_saturadas_g":0.5,"carbs_g":8,"azucar_g":1,"fibra_g":1.5,"sodio_mg":280,"colesterol_mg":15},
+{"alimento":"Sancocho de gallina","estado":"Natural","kcal":85,"proteina_g":6,"grasas_g":3,"grasas_saturadas_g":0.8,"carbs_g":9,"azucar_g":1,"fibra_g":1.5,"sodio_mg":300,"colesterol_mg":20},
+{"alimento":"Caldo de costilla","estado":"Natural","kcal":65,"proteina_g":5,"grasas_g":3,"grasas_saturadas_g":1,"carbs_g":5,"azucar_g":0.5,"fibra_g":0.5,"sodio_mg":350,"colesterol_mg":15},
+{"alimento":"Tamal colombiano","estado":"Natural","kcal":155,"proteina_g":7,"grasas_g":7,"grasas_saturadas_g":2,"carbs_g":18,"azucar_g":1,"fibra_g":2,"sodio_mg":380,"colesterol_mg":30},
+{"alimento":"Tamal tolimense","estado":"Natural","kcal":165,"proteina_g":8,"grasas_g":8,"grasas_saturadas_g":2.5,"carbs_g":17,"azucar_g":1,"fibra_g":2,"sodio_mg":400,"colesterol_mg":35},
+{"alimento":"Lechona","estado":"Natural","kcal":250,"proteina_g":18,"grasas_g":15,"grasas_saturadas_g":5,"carbs_g":12,"azucar_g":1,"fibra_g":1,"sodio_mg":420,"colesterol_mg":60},
+{"alimento":"Chicharrón","estado":"Frito","kcal":540,"proteina_g":35,"grasas_g":44,"grasas_saturadas_g":16,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":500,"colesterol_mg":95},
+{"alimento":"Morcilla colombiana","estado":"Cocida","kcal":260,"proteina_g":14,"grasas_g":17,"grasas_saturadas_g":6,"carbs_g":15,"azucar_g":1,"fibra_g":1,"sodio_mg":680,"colesterol_mg":120},
+{"alimento":"Chorizo colombiano","estado":"Cocido","kcal":300,"proteina_g":14,"grasas_g":25,"grasas_saturadas_g":9,"carbs_g":3,"azucar_g":1,"fibra_g":0,"sodio_mg":750,"colesterol_mg":70},
+{"alimento":"Sobrebarriga sudada","estado":"Cocida","kcal":210,"proteina_g":22,"grasas_g":12,"grasas_saturadas_g":5,"carbs_g":3,"azucar_g":1,"fibra_g":0.5,"sodio_mg":350,"colesterol_mg":75},
+{"alimento":"Cazuela de frijoles","estado":"Natural","kcal":130,"proteina_g":8,"grasas_g":4,"grasas_saturadas_g":1.5,"carbs_g":17,"azucar_g":1,"fibra_g":5,"sodio_mg":400,"colesterol_mg":10},
+/* -- Tubérculos y acompañamientos colombianos -- */
+{"alimento":"Yuca","estado":"Cocida","kcal":160,"proteina_g":1.4,"grasas_g":0.3,"grasas_saturadas_g":0.1,"carbs_g":38,"azucar_g":1.7,"fibra_g":1.8,"sodio_mg":14,"colesterol_mg":0},
+{"alimento":"Yuca frita","estado":"Frita","kcal":280,"proteina_g":1.5,"grasas_g":12,"grasas_saturadas_g":2,"carbs_g":42,"azucar_g":2,"fibra_g":2,"sodio_mg":100,"colesterol_mg":0},
+{"alimento":"Plátano maduro frito","estado":"Frito","kcal":265,"proteina_g":1.2,"grasas_g":11,"grasas_saturadas_g":3,"carbs_g":42,"azucar_g":18,"fibra_g":2.5,"sodio_mg":5,"colesterol_mg":0},
+{"alimento":"Plátano maduro","estado":"Cocido","kcal":150,"proteina_g":1,"grasas_g":0.4,"grasas_saturadas_g":0.1,"carbs_g":38,"azucar_g":18,"fibra_g":2.5,"sodio_mg":4,"colesterol_mg":0},
+{"alimento":"Plátano verde","estado":"Cocido","kcal":130,"proteina_g":1.3,"grasas_g":0.4,"grasas_saturadas_g":0.1,"carbs_g":32,"azucar_g":2,"fibra_g":2.3,"sodio_mg":5,"colesterol_mg":0},
+{"alimento":"Papa criolla","estado":"Cocida","kcal":90,"proteina_g":2,"grasas_g":0.1,"grasas_saturadas_g":0,"carbs_g":21,"azucar_g":1,"fibra_g":2,"sodio_mg":6,"colesterol_mg":0},
+{"alimento":"Frijol rojo","estado":"Cocido","kcal":127,"proteina_g":8.7,"grasas_g":0.5,"grasas_saturadas_g":0.1,"carbs_g":22,"azucar_g":0.3,"fibra_g":7.4,"sodio_mg":2,"colesterol_mg":0},
+{"alimento":"Lenteja","estado":"Cocida","kcal":116,"proteina_g":9,"grasas_g":0.4,"grasas_saturadas_g":0.1,"carbs_g":20,"azucar_g":1.8,"fibra_g":7.9,"sodio_mg":2,"colesterol_mg":0},
+{"alimento":"Garbanzo","estado":"Cocido","kcal":164,"proteina_g":8.9,"grasas_g":2.6,"grasas_saturadas_g":0.3,"carbs_g":27,"azucar_g":4.8,"fibra_g":7.6,"sodio_mg":7,"colesterol_mg":0},
+{"alimento":"Hogao","estado":"Natural","kcal":60,"proteina_g":1,"grasas_g":3,"grasas_saturadas_g":0.5,"carbs_g":7,"azucar_g":4,"fibra_g":1.5,"sodio_mg":250,"colesterol_mg":0},
+/* -- Quesos colombianos -- */
+{"alimento":"Queso campesino","estado":"Natural","kcal":310,"proteina_g":22,"grasas_g":24,"grasas_saturadas_g":15,"carbs_g":2,"azucar_g":1,"fibra_g":0,"sodio_mg":600,"colesterol_mg":80},
+{"alimento":"Queso costeño","estado":"Natural","kcal":350,"proteina_g":25,"grasas_g":28,"grasas_saturadas_g":17,"carbs_g":1,"azucar_g":0.5,"fibra_g":0,"sodio_mg":1200,"colesterol_mg":90},
+{"alimento":"Queso doble crema","estado":"Natural","kcal":295,"proteina_g":20,"grasas_g":23,"grasas_saturadas_g":14,"carbs_g":3,"azucar_g":2,"fibra_g":0,"sodio_mg":550,"colesterol_mg":75},
+{"alimento":"Cuajada","estado":"Natural","kcal":174,"proteina_g":12,"grasas_g":13,"grasas_saturadas_g":8,"carbs_g":2,"azucar_g":2,"fibra_g":0,"sodio_mg":400,"colesterol_mg":45},
+/* -- Frutas colombianas -- */
+{"alimento":"Guayaba","estado":"Natural","kcal":68,"proteina_g":2.6,"grasas_g":1,"grasas_saturadas_g":0.3,"carbs_g":14,"azucar_g":9,"fibra_g":5.4,"sodio_mg":2,"colesterol_mg":0},
+{"alimento":"Lulo","estado":"Natural","kcal":25,"proteina_g":0.6,"grasas_g":0.2,"grasas_saturadas_g":0,"carbs_g":5.7,"azucar_g":3,"fibra_g":1.1,"sodio_mg":3,"colesterol_mg":0},
+{"alimento":"Maracuyá","estado":"Natural","kcal":97,"proteina_g":2.2,"grasas_g":0.7,"grasas_saturadas_g":0.1,"carbs_g":23,"azucar_g":11,"fibra_g":10,"sodio_mg":28,"colesterol_mg":0},
+{"alimento":"Granadilla","estado":"Natural","kcal":94,"proteina_g":2.2,"grasas_g":0.7,"grasas_saturadas_g":0.1,"carbs_g":22,"azucar_g":11,"fibra_g":10,"sodio_mg":28,"colesterol_mg":0},
+{"alimento":"Tomate de árbol","estado":"Natural","kcal":31,"proteina_g":2,"grasas_g":0.4,"grasas_saturadas_g":0.1,"carbs_g":4,"azucar_g":3.5,"fibra_g":3.3,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Mora","estado":"Natural","kcal":43,"proteina_g":1.4,"grasas_g":0.5,"grasas_saturadas_g":0,"carbs_g":10,"azucar_g":4.9,"fibra_g":5.3,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Guanábana","estado":"Natural","kcal":66,"proteina_g":1,"grasas_g":0.3,"grasas_saturadas_g":0.1,"carbs_g":17,"azucar_g":14,"fibra_g":3.3,"sodio_mg":14,"colesterol_mg":0},
+{"alimento":"Papaya","estado":"Natural","kcal":43,"proteina_g":0.5,"grasas_g":0.3,"grasas_saturadas_g":0.1,"carbs_g":11,"azucar_g":8,"fibra_g":1.7,"sodio_mg":8,"colesterol_mg":0},
+{"alimento":"Mango","estado":"Natural","kcal":60,"proteina_g":0.8,"grasas_g":0.4,"grasas_saturadas_g":0.1,"carbs_g":15,"azucar_g":14,"fibra_g":1.6,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Uchuva","estado":"Natural","kcal":53,"proteina_g":1.9,"grasas_g":0.7,"grasas_saturadas_g":0,"carbs_g":11,"azucar_g":8,"fibra_g":0,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Feijoa","estado":"Natural","kcal":55,"proteina_g":1,"grasas_g":0.6,"grasas_saturadas_g":0.1,"carbs_g":13,"azucar_g":8,"fibra_g":6.4,"sodio_mg":3,"colesterol_mg":0},
+{"alimento":"Curuba","estado":"Natural","kcal":25,"proteina_g":0.6,"grasas_g":0.1,"grasas_saturadas_g":0,"carbs_g":6,"azucar_g":4,"fibra_g":1.5,"sodio_mg":5,"colesterol_mg":0},
+{"alimento":"Pitahaya","estado":"Natural","kcal":50,"proteina_g":1.1,"grasas_g":0.4,"grasas_saturadas_g":0,"carbs_g":11,"azucar_g":8,"fibra_g":3,"sodio_mg":39,"colesterol_mg":0},
+{"alimento":"Zapote","estado":"Natural","kcal":83,"proteina_g":0.4,"grasas_g":0.5,"grasas_saturadas_g":0.1,"carbs_g":20,"azucar_g":15,"fibra_g":5.3,"sodio_mg":10,"colesterol_mg":0},
+/* -- Bebidas y dulces colombianos -- */
+{"alimento":"Panela","estado":"Natural","kcal":362,"proteina_g":0.4,"grasas_g":0.1,"grasas_saturadas_g":0,"carbs_g":90,"azucar_g":85,"fibra_g":0,"sodio_mg":30,"colesterol_mg":0},
+{"alimento":"Aguapanela","estado":"Natural","kcal":40,"proteina_g":0,"grasas_g":0,"grasas_saturadas_g":0,"carbs_g":10,"azucar_g":10,"fibra_g":0,"sodio_mg":5,"colesterol_mg":0},
+{"alimento":"Bocadillo guayaba","estado":"Natural","kcal":270,"proteina_g":0.3,"grasas_g":0,"grasas_saturadas_g":0,"carbs_g":70,"azucar_g":67,"fibra_g":3,"sodio_mg":10,"colesterol_mg":0},
+{"alimento":"Arequipe","estado":"Natural","kcal":315,"proteina_g":7,"grasas_g":8,"grasas_saturadas_g":5,"carbs_g":55,"azucar_g":50,"fibra_g":0,"sodio_mg":130,"colesterol_mg":30},
+{"alimento":"Oblea con arequipe","estado":"Natural","kcal":400,"proteina_g":5,"grasas_g":8,"grasas_saturadas_g":4,"carbs_g":78,"azucar_g":55,"fibra_g":1,"sodio_mg":120,"colesterol_mg":15},
+{"alimento":"Mazamorra","estado":"Natural","kcal":80,"proteina_g":1.5,"grasas_g":0.5,"grasas_saturadas_g":0.2,"carbs_g":18,"azucar_g":5,"fibra_g":1,"sodio_mg":15,"colesterol_mg":2},
+{"alimento":"Natilla","estado":"Natural","kcal":160,"proteina_g":3,"grasas_g":4,"grasas_saturadas_g":2.5,"carbs_g":28,"azucar_g":20,"fibra_g":0,"sodio_mg":100,"colesterol_mg":15},
+/* -- Marcas colombianas comunes -- */
+{"alimento":"Leche Alquería entera","estado":"Natural","kcal":61,"proteina_g":3.2,"grasas_g":3.3,"grasas_saturadas_g":2,"carbs_g":4.8,"azucar_g":4.8,"fibra_g":0,"sodio_mg":50,"colesterol_mg":12},
+{"alimento":"Leche Alquería deslactosada","estado":"Natural","kcal":44,"proteina_g":3.2,"grasas_g":1.5,"grasas_saturadas_g":1,"carbs_g":4.8,"azucar_g":4.8,"fibra_g":0,"sodio_mg":50,"colesterol_mg":8},
+{"alimento":"Yogurt Alpina","estado":"Natural","kcal":80,"proteina_g":3,"grasas_g":2.5,"grasas_saturadas_g":1.5,"carbs_g":12,"azucar_g":11,"fibra_g":0,"sodio_mg":55,"colesterol_mg":10},
+{"alimento":"Yogurt Alpina sin azúcar","estado":"Natural","kcal":50,"proteina_g":4,"grasas_g":2,"grasas_saturadas_g":1.2,"carbs_g":5,"azucar_g":4,"fibra_g":0,"sodio_mg":55,"colesterol_mg":8},
+{"alimento":"Avena Alpina","estado":"Natural","kcal":70,"proteina_g":2,"grasas_g":1.5,"grasas_saturadas_g":0.8,"carbs_g":13,"azucar_g":9,"fibra_g":0.5,"sodio_mg":40,"colesterol_mg":5},
+{"alimento":"Salchicha Zenú","estado":"Cocida","kcal":240,"proteina_g":11,"grasas_g":20,"grasas_saturadas_g":8,"carbs_g":4,"azucar_g":1,"fibra_g":0,"sodio_mg":900,"colesterol_mg":55},
+{"alimento":"Jamón Zenú","estado":"Natural","kcal":145,"proteina_g":14,"grasas_g":9,"grasas_saturadas_g":3.5,"carbs_g":2,"azucar_g":1,"fibra_g":0,"sodio_mg":980,"colesterol_mg":45},
+{"alimento":"Galletas Tosh integral","estado":"Natural","kcal":440,"proteina_g":7,"grasas_g":15,"grasas_saturadas_g":5,"carbs_g":70,"azucar_g":18,"fibra_g":5,"sodio_mg":350,"colesterol_mg":0},
+{"alimento":"Ponqué Ramo","estado":"Natural","kcal":400,"proteina_g":5,"grasas_g":18,"grasas_saturadas_g":8,"carbs_g":56,"azucar_g":32,"fibra_g":1,"sodio_mg":300,"colesterol_mg":40},
+{"alimento":"Chocoramo","estado":"Natural","kcal":430,"proteina_g":5,"grasas_g":20,"grasas_saturadas_g":10,"carbs_g":60,"azucar_g":38,"fibra_g":2,"sodio_mg":280,"colesterol_mg":35},
+{"alimento":"Leche condensada","estado":"Natural","kcal":321,"proteina_g":8,"grasas_g":8,"grasas_saturadas_g":5,"carbs_g":54,"azucar_g":54,"fibra_g":0,"sodio_mg":130,"colesterol_mg":34},
+/* -- Otros alimentos populares en Colombia -- */
+{"alimento":"Café negro","estado":"Natural","kcal":2,"proteina_g":0.1,"grasas_g":0,"grasas_saturadas_g":0,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":2,"colesterol_mg":0},
+{"alimento":"Chocolate santafereño","estado":"Natural","kcal":55,"proteina_g":1.5,"grasas_g":2,"grasas_saturadas_g":1.2,"carbs_g":8,"azucar_g":7,"fibra_g":0.5,"sodio_mg":30,"colesterol_mg":3},
+{"alimento":"Coco rallado","estado":"Natural","kcal":354,"proteina_g":3.3,"grasas_g":33,"grasas_saturadas_g":30,"carbs_g":15,"azucar_g":6,"fibra_g":9,"sodio_mg":20,"colesterol_mg":0},
+{"alimento":"Maíz tierno","estado":"Cocido","kcal":96,"proteina_g":3.4,"grasas_g":1.5,"grasas_saturadas_g":0.2,"carbs_g":19,"azucar_g":3.2,"fibra_g":2.7,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Envuelto de mazorca","estado":"Natural","kcal":200,"proteina_g":4,"grasas_g":6,"grasas_saturadas_g":2,"carbs_g":34,"azucar_g":8,"fibra_g":2,"sodio_mg":200,"colesterol_mg":15},
+/* ===== FIN COMIDA COLOMBIANA ===== */
+/* ===== ALIMENTOS GENERALES (por 100g) ===== */
+{"alimento":"Lomo fino res","estado":"Crudo","kcal":120,"proteina_g":22,"grasas_g":3,"grasas_saturadas_g":1.2,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":55,"colesterol_mg":70},
+{"alimento":"Lomo fino res","estado":"Cocido","kcal":190,"proteina_g":29,"grasas_g":7,"grasas_saturadas_g":3,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":60,"colesterol_mg":85},
+{"alimento":"Pasta Barilla","estado":"Cruda","kcal":360,"proteina_g":12,"grasas_g":1.5,"grasas_saturadas_g":0.3,"carbs_g":72,"azucar_g":3,"fibra_g":3,"sodio_mg":5,"colesterol_mg":0},
+{"alimento":"Pasta Barilla","estado":"Cocida","kcal":155,"proteina_g":5.5,"grasas_g":0.9,"grasas_saturadas_g":0.2,"carbs_g":31,"azucar_g":2,"fibra_g":1.8,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Arroz blanco","estado":"Cocido","kcal":130,"proteina_g":2.5,"grasas_g":0.3,"grasas_saturadas_g":0.1,"carbs_g":28,"azucar_g":0,"fibra_g":0.4,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Yogurt griego casero","estado":"Natural","kcal":97,"proteina_g":9,"grasas_g":5,"grasas_saturadas_g":3,"carbs_g":3.5,"azucar_g":3.5,"fibra_g":0,"sodio_mg":36,"colesterol_mg":20},
+{"alimento":"Aceite oliva","estado":"Natural","kcal":884,"proteina_g":0,"grasas_g":100,"grasas_saturadas_g":14,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":2,"colesterol_mg":0},
+{"alimento":"Huevo entero","estado":"Natural","kcal":155,"proteina_g":13,"grasas_g":11,"grasas_saturadas_g":3.3,"carbs_g":1.1,"azucar_g":1.1,"fibra_g":0,"sodio_mg":124,"colesterol_mg":373},
+{"alimento":"Yema huevo","estado":"Natural","kcal":322,"proteina_g":16,"grasas_g":27,"grasas_saturadas_g":9.5,"carbs_g":3.6,"azucar_g":0.6,"fibra_g":0,"sodio_mg":48,"colesterol_mg":1085},
+{"alimento":"Avena","estado":"Cruda","kcal":389,"proteina_g":17,"grasas_g":7,"grasas_saturadas_g":1.2,"carbs_g":66,"azucar_g":1,"fibra_g":10,"sodio_mg":2,"colesterol_mg":0},
+{"alimento":"Crema de mani Wake Up","estado":"Natural","kcal":588,"proteina_g":25,"grasas_g":50,"grasas_saturadas_g":10,"carbs_g":20,"azucar_g":6,"fibra_g":6,"sodio_mg":400,"colesterol_mg":0},
+{"alimento":"Tilapia","estado":"Cruda","kcal":96,"proteina_g":20,"grasas_g":1.7,"grasas_saturadas_g":0.6,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":52,"colesterol_mg":50},
+{"alimento":"Tilapia","estado":"Cocida","kcal":128,"proteina_g":26,"grasas_g":2.7,"grasas_saturadas_g":0.8,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":60,"colesterol_mg":57},
+{"alimento":"Salmon","estado":"Crudo","kcal":208,"proteina_g":20,"grasas_g":13,"grasas_saturadas_g":3,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":59,"colesterol_mg":55},
+{"alimento":"Salmon","estado":"Cocido","kcal":232,"proteina_g":25,"grasas_g":14,"grasas_saturadas_g":3.1,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":63,"colesterol_mg":63},
+{"alimento":"Costilla res","estado":"Cruda","kcal":291,"proteina_g":19,"grasas_g":24,"grasas_saturadas_g":10,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":70,"colesterol_mg":80},
+{"alimento":"Costilla res","estado":"Cocida","kcal":330,"proteina_g":25,"grasas_g":27,"grasas_saturadas_g":11,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":80,"colesterol_mg":95},
+{"alimento":"Pechuga pollo","estado":"Cruda","kcal":120,"proteina_g":22,"grasas_g":2.5,"grasas_saturadas_g":0.6,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":45,"colesterol_mg":60},
+{"alimento":"Pechuga pollo","estado":"Cocida","kcal":165,"proteina_g":31,"grasas_g":3.6,"grasas_saturadas_g":1,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":70,"colesterol_mg":85},
+{"alimento":"Muslo pollo","estado":"Cocido","kcal":209,"proteina_g":26,"grasas_g":11,"grasas_saturadas_g":3,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":90,"colesterol_mg":105},
+{"alimento":"Carne molida res 90/10","estado":"Cruda","kcal":176,"proteina_g":26,"grasas_g":10,"grasas_saturadas_g":4,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":72,"colesterol_mg":75},
+{"alimento":"Carne molida res 90/10","estado":"Cocida","kcal":217,"proteina_g":26,"grasas_g":12,"grasas_saturadas_g":5,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":85,"colesterol_mg":88},
+{"alimento":"Atun en agua","estado":"Natural","kcal":116,"proteina_g":26,"grasas_g":1,"grasas_saturadas_g":0.3,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":247,"colesterol_mg":47},
+{"alimento":"Atun en aceite","estado":"Natural","kcal":198,"proteina_g":29,"grasas_g":8,"grasas_saturadas_g":1.5,"carbs_g":0,"azucar_g":0,"fibra_g":0,"sodio_mg":350,"colesterol_mg":55},
+{"alimento":"Queso mozzarella","estado":"Natural","kcal":280,"proteina_g":28,"grasas_g":17,"grasas_saturadas_g":11,"carbs_g":3,"azucar_g":1,"fibra_g":0,"sodio_mg":627,"colesterol_mg":79},
+{"alimento":"Pan integral","estado":"Natural","kcal":247,"proteina_g":13,"grasas_g":4,"grasas_saturadas_g":0.7,"carbs_g":41,"azucar_g":6,"fibra_g":7,"sodio_mg":400,"colesterol_mg":0},
+{"alimento":"Papa cocida","estado":"Natural","kcal":87,"proteina_g":2,"grasas_g":0.1,"grasas_saturadas_g":0,"carbs_g":20,"azucar_g":1,"fibra_g":2.2,"sodio_mg":6,"colesterol_mg":0},
+{"alimento":"Aguacate","estado":"Natural","kcal":160,"proteina_g":2,"grasas_g":15,"grasas_saturadas_g":2,"carbs_g":9,"azucar_g":0.7,"fibra_g":7,"sodio_mg":7,"colesterol_mg":0},
+{"alimento":"Almendras","estado":"Natural","kcal":579,"proteina_g":21,"grasas_g":50,"grasas_saturadas_g":4,"carbs_g":22,"azucar_g":4,"fibra_g":12,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Chia","estado":"Natural","kcal":486,"proteina_g":17,"grasas_g":31,"grasas_saturadas_g":3,"carbs_g":42,"azucar_g":0,"fibra_g":34,"sodio_mg":16,"colesterol_mg":0},
+{"alimento":"Miel","estado":"Natural","kcal":304,"proteina_g":0.3,"grasas_g":0,"grasas_saturadas_g":0,"carbs_g":82,"azucar_g":82,"fibra_g":0,"sodio_mg":4,"colesterol_mg":0},
+{"alimento":"Chocolate 70%","estado":"Natural","kcal":598,"proteina_g":8,"grasas_g":43,"grasas_saturadas_g":25,"carbs_g":46,"azucar_g":24,"fibra_g":11,"sodio_mg":20,"colesterol_mg":3},
+{"alimento":"Proteina Whey","estado":"Polvo","kcal":390,"proteina_g":75,"grasas_g":6,"grasas_saturadas_g":3,"carbs_g":10,"azucar_g":6,"fibra_g":1,"sodio_mg":200,"colesterol_mg":60},
+{"alimento":"Quinua cocida","estado":"Natural","kcal":120,"proteina_g":4.4,"grasas_g":1.9,"grasas_saturadas_g":0.2,"carbs_g":21,"azucar_g":0.9,"fibra_g":2.8,"sodio_mg":7,"colesterol_mg":0},
+{"alimento":"Manzana","estado":"Natural","kcal":52,"proteina_g":0.3,"grasas_g":0.2,"grasas_saturadas_g":0,"carbs_g":14,"azucar_g":10,"fibra_g":2.4,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Fresa","estado":"Natural","kcal":32,"proteina_g":0.7,"grasas_g":0.3,"grasas_saturadas_g":0,"carbs_g":7.7,"azucar_g":4.9,"fibra_g":2,"sodio_mg":1,"colesterol_mg":0},
+{"alimento":"Clara de huevo","estado":"Natural","kcal":52,"proteina_g":10.9,"grasas_g":0.2,"grasas_saturadas_g":0,"carbs_g":0.7,"azucar_g":0.7,"fibra_g":0,"sodio_mg":166,"colesterol_mg":0},
+{"alimento":"Huevo frito","estado":"Cocido","kcal":196,"proteina_g":13.6,"grasas_g":15,"grasas_saturadas_g":4.3,"carbs_g":0.8,"azucar_g":0.8,"fibra_g":0,"sodio_mg":207,"colesterol_mg":401},
+{"alimento":"Huevo revuelto","estado":"Cocido","kcal":166,"proteina_g":11.1,"grasas_g":12.2,"grasas_saturadas_g":3.9,"carbs_g":1.6,"azucar_g":1.4,"fibra_g":0,"sodio_mg":171,"colesterol_mg":356},
+{"alimento":"Banano","estado":"Natural","kcal":89,"proteina_g":1.1,"grasas_g":0.3,"grasas_saturadas_g":0.1,"carbs_g":23,"azucar_g":12,"fibra_g":2.6,"sodio_mg":1,"colesterol_mg":0}
+];
+
+/* Food DB search: normalize text for fuzzy matching */
+const normFood=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+
+/* Aliases for common food names → canonical names in FOOD_DB */
+const FOOD_ALIASES={
+  /* Comida colombiana */
+  "arepa":"arepa blanca maíz","arepa blanca":"arepa blanca maíz","arepa maiz":"arepa blanca maíz","arepa de maiz":"arepa blanca maíz",
+  "arepa choclo":"arepa de choclo","arepa de chocolo":"arepa de choclo","arepa chocolo":"arepa de choclo",
+  "arepa queso":"arepa de queso",
+  "arepa huevo":"arepa de huevo","arepa e huevo":"arepa de huevo",
+  "empanada":"empanada colombiana","empanadas":"empanada colombiana",
+  "empanada pollo":"empanada de pollo","empanada de pollo":"empanada de pollo",
+  "buñuelo":"buñuelo","bunuelo":"buñuelo","buñuelos":"buñuelo",
+  "pandebono":"pandebono","pan de bono":"pan de bono",
+  "almojabana":"almojábana","almojábanas":"almojábana","almojabanas":"almojábana",
+  "patacon":"patacón","patacones":"patacón","tostones":"patacón",
+  "dedito":"dedito de queso","deditos":"dedito de queso","deditos de queso":"dedito de queso",
+  "bandeja paisa":"bandeja paisa","bandeja":"bandeja paisa",
+  "ajiaco":"ajiaco bogotano",
+  "sancocho":"sancocho de gallina","sancocho gallina":"sancocho de gallina",
+  "caldo de costilla":"caldo de costilla","caldo costilla":"caldo de costilla",
+  "tamal":"tamal colombiano","tamales":"tamal colombiano",
+  "tamal tolimense":"tamal tolimense",
+  "lechona":"lechona",
+  "chicharron":"chicharrón","chicharrones":"chicharrón",
+  "morcilla":"morcilla colombiana",
+  "chorizo":"chorizo colombiano","chorizos":"chorizo colombiano",
+  "sobrebarriga":"sobrebarriga sudada",
+  "frijoles":"cazuela de frijoles","cazuela frijoles":"cazuela de frijoles","frijol":"frijol rojo",
+  "lentejas":"lenteja","lenteja":"lenteja",
+  "garbanzo":"garbanzo","garbanzos":"garbanzo",
+  "hogao":"hogao","guiso":"hogao",
+  "yuca":"yuca","cassava":"yuca",
+  "yuca frita":"yuca frita",
+  "platano maduro":"plátano maduro frito","maduro":"plátano maduro frito","maduros":"plátano maduro frito","tajadas":"plátano maduro frito",
+  "platano verde":"plátano verde","verde":"plátano verde",
+  "papa criolla":"papa criolla","papas criollas":"papa criolla","criolla":"papa criolla",
+  "queso campesino":"queso campesino",
+  "queso costeño":"queso costeño","queso costeno":"queso costeño",
+  "queso doble crema":"queso doble crema",
+  "cuajada":"cuajada",
+  "guayaba":"guayaba",
+  "lulo":"lulo","naranjilla":"lulo",
+  "maracuya":"maracuyá","maracuyá":"maracuyá",
+  "granadilla":"granadilla",
+  "tomate de arbol":"tomate de árbol","tomate arbol":"tomate de árbol",
+  "mora":"mora","blackberry":"mora",
+  "guanabana":"guanábana","guanábana":"guanábana",
+  "papaya":"papaya",
+  "mango":"mango",
+  "uchuva":"uchuva","physalis":"uchuva",
+  "feijoa":"feijoa",
+  "curuba":"curuba",
+  "pitahaya":"pitahaya","pitaya":"pitahaya","dragon fruit":"pitahaya",
+  "zapote":"zapote",
+  "panela":"panela","aguapanela":"aguapanela","agua panela":"aguapanela","agua de panela":"aguapanela",
+  "bocadillo":"bocadillo guayaba","bocadillo guayaba":"bocadillo guayaba",
+  "arequipe":"arequipe","dulce de leche":"arequipe",
+  "oblea":"oblea con arequipe","obleas":"oblea con arequipe",
+  "mazamorra":"mazamorra",
+  "natilla":"natilla",
+  "leche":"leche alquería entera","leche entera":"leche alquería entera","leche alqueria":"leche alquería entera",
+  "leche deslactosada":"leche alquería deslactosada",
+  "yogurt alpina":"yogurt alpina","alpina":"yogurt alpina",
+  "avena alpina":"avena alpina",
+  "salchicha":"salchicha zenú","salchichas":"salchicha zenú","salchicha zenu":"salchicha zenú",
+  "jamon":"jamón zenú","jamón":"jamón zenú","jamon zenu":"jamón zenú",
+  "tosh":"galletas tosh integral","galletas tosh":"galletas tosh integral",
+  "ponque":"ponqué ramo","ponque ramo":"ponqué ramo","ponqué":"ponqué ramo",
+  "chocoramo":"chocoramo",
+  "leche condensada":"leche condensada",
+  "cafe":"café negro","café":"café negro","tinto":"café negro","coffee":"café negro",
+  "chocolate santafereño":"chocolate santafereño","chocolate caliente":"chocolate santafereño",
+  "coco":"coco rallado",
+  "mazorca":"maíz tierno","maiz":"maíz tierno","choclo":"maíz tierno",
+  "envuelto":"envuelto de mazorca","envueltos":"envuelto de mazorca",
+  /* Alimentos generales */
+  "pollo":"pechuga pollo","chicken":"pechuga pollo","breast":"pechuga pollo","pechuga":"pechuga pollo",
+  "muslo":"muslo pollo","thigh":"muslo pollo",
+  "lomo":"lomo fino res","tenderloin":"lomo fino res","filete":"lomo fino res",
+  "res":"lomo fino res","beef":"lomo fino res",
+  "costilla":"costilla res","ribs":"costilla res",
+  "carne molida":"carne molida res 90/10","molida":"carne molida res 90/10","ground beef":"carne molida res 90/10",
+  "arroz":"arroz blanco","rice":"arroz blanco",
+  "pasta":"pasta barilla","spaghetti":"pasta barilla","espagueti":"pasta barilla","fideo":"pasta barilla",
+  "avena":"avena","oats":"avena","oatmeal":"avena",
+  "huevo":"huevo entero","egg":"huevo entero","huevos":"huevo entero",
+  "yema":"yema huevo","yolk":"yema huevo",
+  "yogurt":"yogurt griego casero","yogur":"yogurt griego casero","greek yogurt":"yogurt griego casero",
+  "aceite":"aceite oliva","olive oil":"aceite oliva",
+  "crema de mani":"crema de mani wake up","mantequilla de mani":"crema de mani wake up","peanut butter":"crema de mani wake up",
+  "tilapia":"tilapia","fish":"tilapia",
+  "salmon":"salmon","salmón":"salmon",
+  "atun":"atun en agua","tuna":"atun en agua",
+  "queso":"queso mozzarella","mozzarella":"queso mozzarella","cheese":"queso mozzarella",
+  "pan":"pan integral","bread":"pan integral","pan integral":"pan integral",
+  "papa":"papa cocida","potato":"papa cocida","patata":"papa cocida",
+  "aguacate":"aguacate","avocado":"aguacate",
+  "almendras":"almendras","almonds":"almendras",
+  "chia":"chia","chía":"chia",
+  "miel":"miel","honey":"miel",
+  "chocolate":"chocolate 70%",
+  "whey":"proteina whey","proteina":"proteina whey","protein":"proteina whey",
+  "quinua":"quinua cocida","quinoa":"quinua cocida",
+  "manzana":"manzana","apple":"manzana",
+  "fresa":"fresa","strawberry":"fresa","fresas":"fresa",
+  "clara":"clara de huevo","claras":"clara de huevo","clara de huevo":"clara de huevo","egg white":"clara de huevo",
+  "huevo frito":"huevo frito","frito":"huevo frito","fried egg":"huevo frito",
+  "huevo revuelto":"huevo revuelto","revueltos":"huevo revuelto","scrambled":"huevo revuelto",
+  "banano":"banano","banana":"banano","guineo":"banano","platano":"banano"
+};
+
+/* Search food in personal DB (priority 1) then reference table (priority 2).
+   Returns {match, source:"personal"|"referencia", entry} or null */
+const searchFoodMatch=(query, personalFoods)=>{
+  const q=normFood(query);
+  /* Check aliases first */
+  const aliasKey=Object.keys(FOOD_ALIASES).find(a=>q.includes(normFood(a)));
+  const canonical=aliasKey?normFood(FOOD_ALIASES[aliasKey]):q;
+
+  /* Determine cooking state from query */
+  const rawWords=["crudo","cruda","raw"];
+  const cookedWords=["cocido","cocida","cooked","asado","asada","a la plancha","grilled","horneado","horneada"];
+  const isRaw=rawWords.some(w=>q.includes(w));
+  const isCooked=cookedWords.some(w=>q.includes(w));
+  /* Default: cocido for meats/grains, natural for others */
+  const preferState=isRaw?"Crudo":isCooked?"Cocido":null;
+
+  const scoreMatch=(entry)=>{
+    const name=normFood(entry.alimento);
+    let score=0;
+    if(name===canonical)score=100;
+    else if(canonical.includes(name)||name.includes(canonical))score=80;
+    else{
+      const words=canonical.split(" ");
+      const nameWords=name.split(" ");
+      const matched=words.filter(w=>nameWords.some(nw=>nw.includes(w)||w.includes(nw)));
+      score=matched.length>0?(matched.length/Math.max(words.length,nameWords.length))*60:0;
+    }
+    /* Boost for matching state */
+    if(preferState&&normFood(entry.estado)===normFood(preferState))score+=10;
+    else if(!preferState&&["Cocido","Cocida","Natural","Polvo"].includes(entry.estado))score+=5;
+    return score;
+  };
+
+  /* Search personal foods first */
+  if(personalFoods&&personalFoods.length>0){
+    let best=null,bestScore=0;
+    personalFoods.forEach(f=>{const s=scoreMatch(f);if(s>bestScore){bestScore=s;best=f}});
+    if(best&&bestScore>=40)return{match:best,source:"personal",score:bestScore};
+  }
+  /* Then search reference table */
+  let best=null,bestScore=0;
+  FOOD_DB.forEach(f=>{const s=scoreMatch(f);if(s>bestScore){bestScore=s;best=f}});
+  if(best&&bestScore>=40)return{match:best,source:"referencia",score:bestScore};
+  return null;
+};
+
+/* Default portions (grams) when user doesn't specify */
+const DEFAULT_PORTIONS={
+  /* Colombianos */
+  "arepa blanca maíz":120,"arepa de choclo":120,"arepa de queso":120,"arepa de huevo":150,
+  "empanada colombiana":70,"empanada de pollo":70,
+  "buñuelo":50,"pandebono":60,"almojábana":60,"pan de bono":60,
+  "patacón":100,"dedito de queso":40,
+  "bandeja paisa":650,"ajiaco bogotano":400,"sancocho de gallina":450,"caldo de costilla":350,
+  "tamal colombiano":250,"tamal tolimense":300,"lechona":200,
+  "chicharrón":60,"morcilla colombiana":100,"chorizo colombiano":80,
+  "sobrebarriga sudada":150,"cazuela de frijoles":200,
+  "yuca":150,"yuca frita":150,
+  "plátano maduro frito":120,"plátano maduro":120,"plátano verde":120,
+  "papa criolla":150,"frijol rojo":170,"lenteja":170,"garbanzo":170,"hogao":50,
+  "queso campesino":30,"queso costeño":30,"queso doble crema":30,"cuajada":50,
+  "guayaba":150,"lulo":60,"maracuyá":50,"granadilla":50,"tomate de árbol":80,
+  "mora":150,"guanábana":150,"papaya":200,"mango":200,"uchuva":80,"feijoa":100,"curuba":50,"pitahaya":150,"zapote":150,
+  "panela":30,"aguapanela":250,"bocadillo guayaba":40,"arequipe":30,"oblea con arequipe":60,
+  "mazamorra":250,"natilla":150,
+  "leche alquería entera":250,"leche alquería deslactosada":250,
+  "yogurt alpina":200,"yogurt alpina sin azúcar":200,"avena alpina":250,
+  "salchicha zenú":50,"jamón zenú":30,"galletas tosh integral":30,
+  "ponqué ramo":65,"chocoramo":65,"leche condensada":20,
+  "café negro":250,"chocolate santafereño":250,"coco rallado":30,
+  "maíz tierno":150,"envuelto de mazorca":120,
+  /* Generales */
+  "huevo entero":50,"yema huevo":17,"clara de huevo":33,"huevo frito":50,"huevo revuelto":50,
+  "aceite oliva":14,"crema de mani wake up":32,
+  "pan integral":30,"manzana":180,"fresa":150,"miel":21,
+  "chocolate 70%":30,"proteina whey":30,"chia":15,"almendras":30,"aguacate":80,
+  "queso mozzarella":30,"atun en agua":80,"atun en aceite":80,"banano":120
+};
+
+const DEF_S={planName:"Mini-Cut 6 Semanas",planGoal:"20% → 15% Body Fat",startWeight:73.7,goalWeight:71.0,startWaist:87.5,cutWeeks:6,startDate:"2026-02-01",trainingPerWeek:5,protRange:[153,999],fatRange:[0,75],carbRange:[0,999],sugarRange:[0,40],fiberRange:[20,999],goalProfiles:DEF_GOALS,activeGoalProfile:"cut",geminiApiKey:"",groqApiKey:"",aiProvider:"gemini",aiPrompt:""};
 
 const DEF_HAB=[
 {id:"h1",name:"Gym / Pesas",emoji:"💪",meta:"5x/semana",active:true},
@@ -136,19 +458,19 @@ const DEF_HOR=[
 {hour:"21:00",slots:["Descanso 😴","Descanso 😴","Descanso 😴","Descanso 😴","Descanso 😴","Libre ✨","Libre ✨"]}];
 
 const DEF_FL=[
-{date:"2026-02-01",week:"S1",dayType:"dt1",weight:73.7,waist:87.5,cal:2763,prot:172,fat:99,carbs:287,sugar:15,steps:12160,sleep:"",notes:""},
-{date:"2026-02-02",week:"S1",dayType:"dt2",weight:73.7,waist:87.5,cal:2553,prot:180,fat:55,carbs:319,sugar:7,steps:11459,sleep:"",notes:""},
-{date:"2026-02-03",week:"S1",dayType:"dt6",weight:73.7,waist:87.5,cal:2803,prot:187,fat:73,carbs:348,sugar:39,steps:20535,sleep:"",notes:""},
-{date:"2026-02-04",week:"S1",dayType:"dt2",weight:73.7,waist:87.5,cal:2330,prot:180,fat:76,carbs:242,sugar:40,steps:15150,sleep:"",notes:""},
-{date:"2026-02-05",week:"S1",dayType:"dt2",weight:73.2,waist:87.5,cal:2310,prot:175,fat:62,carbs:241,sugar:42,steps:10795,sleep:"",notes:""},
-{date:"2026-02-06",week:"S1",dayType:"dt2",weight:73.2,waist:87.5,cal:2331,prot:178,fat:84,carbs:217,sugar:30,steps:11380,sleep:"",notes:""},
-{date:"2026-02-07",week:"S1",dayType:"dt1",weight:73.0,waist:87.0,cal:2094,prot:184,fat:81,carbs:161,sugar:38,steps:9333,sleep:"",notes:""},
-{date:"2026-02-08",week:"S2",dayType:"dt1",weight:73.0,waist:87.0,cal:2368,prot:168,fat:125,carbs:140,sugar:10,steps:12000,sleep:"",notes:""},
-{date:"2026-02-09",week:"S2",dayType:"dt2",weight:72.5,waist:87.0,cal:0,prot:0,fat:0,carbs:0,sugar:0,steps:0,sleep:"",notes:""}];
+{date:"2026-02-01",week:"S1",dayType:"dt1",weight:73.7,waist:87.5,cal:2763,prot:172,fat:99,carbs:287,sugar:15,fiber:0,steps:12160,sleep:"",notes:""},
+{date:"2026-02-02",week:"S1",dayType:"dt2",weight:73.7,waist:87.5,cal:2553,prot:180,fat:55,carbs:319,sugar:7,fiber:0,steps:11459,sleep:"",notes:""},
+{date:"2026-02-03",week:"S1",dayType:"dt6",weight:73.7,waist:87.5,cal:2803,prot:187,fat:73,carbs:348,sugar:39,fiber:0,steps:20535,sleep:"",notes:""},
+{date:"2026-02-04",week:"S1",dayType:"dt2",weight:73.7,waist:87.5,cal:2330,prot:180,fat:76,carbs:242,sugar:40,fiber:0,steps:15150,sleep:"",notes:""},
+{date:"2026-02-05",week:"S1",dayType:"dt2",weight:73.2,waist:87.5,cal:2310,prot:175,fat:62,carbs:241,sugar:42,fiber:0,steps:10795,sleep:"",notes:""},
+{date:"2026-02-06",week:"S1",dayType:"dt2",weight:73.2,waist:87.5,cal:2331,prot:178,fat:84,carbs:217,sugar:30,fiber:0,steps:11380,sleep:"",notes:""},
+{date:"2026-02-07",week:"S1",dayType:"dt1",weight:73.0,waist:87.0,cal:2094,prot:184,fat:81,carbs:161,sugar:38,fiber:0,steps:9333,sleep:"",notes:""},
+{date:"2026-02-08",week:"S2",dayType:"dt1",weight:73.0,waist:87.0,cal:2368,prot:168,fat:125,carbs:140,sugar:10,fiber:0,steps:12000,sleep:"",notes:""},
+{date:"2026-02-09",week:"S2",dayType:"dt2",weight:72.5,waist:87.0,cal:0,prot:0,fat:0,carbs:0,sugar:0,fiber:0,steps:0,sleep:"",notes:""}];
 
 const DEF_TT=[{id:"tt1",task:"Sesión de pesas — Upper body",cat:"Gym",done:false},{id:"tt2",task:"Revisar propuesta Asorsalud",cat:"Trabajo",done:false},{id:"tt3",task:"Llamada canchas de pádel",cat:"Trabajo",done:false},{id:"tt4",task:"Leer 30 min",cat:"Lectura",done:false},{id:"tt5",task:"Registrar macros del día",cat:"Fitness",done:false},{id:"tt6",task:"Estudiar 1 hora",cat:"Estudio",done:false}];
 
-const DEF={settings:DEF_S,dayTypes:DEF_DT,habits:DEF_HAB,habitWeekly:{},projects:DEF_PROJ,books:DEF_BOOKS,readingLog:DEF_RL,horario:DEF_HOR,fitnessLog:DEF_FL,todayTasks:DEF_TT,journal:{}};
+const DEF={settings:DEF_S,dayTypes:DEF_DT,habits:DEF_HAB,habitWeekly:{},projects:DEF_PROJ,books:DEF_BOOKS,readingLog:DEF_RL,horario:DEF_HOR,fitnessLog:DEF_FL,todayTasks:DEF_TT,journal:{},personalFoods:[]};
 
 /* === DEEP MERGE helper === */
 const deepMerge=(p)=>{
@@ -235,19 +557,20 @@ const signIn=()=>{if(!fbAuth)return setSyncError("Firebase no configurado. Edita
 const signOut=()=>{if(fbAuth)fbAuth.signOut()};
 const go=p=>{setPg(p);setSideOpen(false)};
 
-const S=D?.settings||DEF_S;const dayTypes=D?.dayTypes||DEF_DT;const fl=D?.fitnessLog||[];const habits=D?.habits||DEF_HAB;const projects=D?.projects||DEF_PROJ;const books=D?.books||DEF_BOOKS;const readingLog=D?.readingLog||[];const horario=D?.horario||DEF_HOR;const journal=D?.journal||{};const hw=D?.habitWeekly||{};
+const S=D?.settings||DEF_S;const dayTypes=D?.dayTypes||DEF_DT;const fl=D?.fitnessLog||[];const habits=D?.habits||DEF_HAB;const projects=D?.projects||DEF_PROJ;const books=D?.books||DEF_BOOKS;const readingLog=D?.readingLog||[];const horario=D?.horario||DEF_HOR;const journal=D?.journal||{};const hw=D?.habitWeekly||{};const personalFoods=D?.personalFoods||[];
 
 const getDT=id=>dayTypes.find(t=>t.id===id)||dayTypes[0];
 /* Compliance: P,G,C,S use global intervals; K (cal) uses per-day-type calMin/calMax */
 const chkComp=(e)=>{
-  const pr=S.protRange||[153,999],fr=S.fatRange||[0,75],cr=S.carbRange||[0,999],sr=S.sugarRange||[0,40];
+  const pr=S.protRange||[153,999],fr=S.fatRange||[0,75],cr=S.carbRange||[0,999],sr=S.sugarRange||[0,40],fbr=S.fiberRange||[20,999];
   const dt=getDT(e.dayType);
   const p=(+e.prot||0)>=pr[0]&&(+e.prot||0)<=pr[1]?1:0;
   const g=(+e.fat||0)>=fr[0]&&(+e.fat||0)<=fr[1]?1:0;
   const c=(+e.carbs||0)>=cr[0]&&(+e.carbs||0)<=cr[1]?1:0;
   const su=(+e.sugar||0)>=sr[0]&&(+e.sugar||0)<=sr[1]?1:0;
+  const fb=(+e.fiber||0)>=fbr[0]&&(+e.fiber||0)<=fbr[1]?1:0;
   const k=(+e.cal||0)>=(dt.calMin||0)&&(+e.cal||0)<=(dt.calMax||99999)?1:0;
-  return{p,g,c,s:su,k,day:p+g+c+su+k>=4?1:0};
+  return{p,g,c,s:su,fb,k,day:p+g+c+su+fb+k>=4?1:0};
 };
 
 const latest=fl.length>0?fl[fl.length-1]:{weight:S.startWeight,waist:S.startWaist};
@@ -257,12 +580,12 @@ const completedWeek=Math.min(Math.floor((dayN-1)/7),S.cutWeeks);const currentWee
 const goalProfiles=S.goalProfiles||DEF_GOALS;const activeGP=goalProfiles.find(g=>g.id===S.activeGoalProfile)||goalProfiles[0];
 const setActiveProfile=(pid)=>{sv({...D,settings:{...S,activeGoalProfile:pid}})};
 const updGoalProfile=(pid,u)=>{const gp=goalProfiles.map(g=>g.id===pid?{...g,...u}:g);sv({...D,settings:{...S,goalProfiles:gp}})};
-const validateGoal=(k,v)=>{const ranges={cal:[800,6000],prot:[30,500],fat:[10,300],carbs:[30,800],sugar:[0,200],trainingPerWeek:[0,14]};const r=ranges[k]||[0,99999];return Math.max(r[0],Math.min(r[1],+v||0))};
-const avg=(arr,k)=>arr.length>0?(arr.reduce((a,x)=>a+(+x[k]||0),0)/arr.length).toFixed(0):0;
+const validateGoal=(k,v)=>{const ranges={cal:[800,6000],prot:[30,500],fat:[10,300],carbs:[30,800],sugar:[0,200],fiber:[0,100],trainingPerWeek:[0,14]};const r=ranges[k]||[0,99999];return Math.max(r[0],Math.min(r[1],+v||0))};
+const avg=(arr,k)=>arr.length>0?(arr.reduce((a,x)=>a+(+x[k]||0),0)/arr.length).toFixed(1):0;
 const movAvg=(arr,k,w=7)=>{if(arr.length<2)return[];return arr.map((_,i)=>{const st=Math.max(0,i-w+1);const sl=arr.slice(st,i+1).filter(x=>x[k]!==undefined&&x[k]!==null&&x[k]!=="");const a=sl.length>0?sl.reduce((a,x)=>a+(+x[k]||0),0)/sl.length:0;return{date:arr[i].date,v:+a.toFixed(1),label:arr[i].date.slice(5)}})};
 const getWk=()=>{const wk=[];const now=new Date();const dow=now.getDay();const sow=new Date(now);sow.setDate(now.getDate()-(dow===0?6:dow-1));for(let i=0;i<7;i++){const d=new Date(sow);d.setDate(sow.getDate()+i);wk.push(fmtD(d))}return wk};
 
-const C={bg0:"#08080a",bg1:"#0e0e12",bg2:"#141418",bg3:"#1a1a20",bg4:"#222228",b1:"#1e1e24",t0:"#f4f4f6",t1:"#c8c8d0",t2:"#8888a0",t3:"#55556a",lime:"#b8f000",blue:"#5b9df5",orange:"#f5a623",red:"#f55353",green:"#34d399",purple:"#a78bfa",cyan:"#22d3ee",pink:"#f472b6"};
+const C={bg0:"#08080a",bg1:"#0e0e12",bg2:"#141418",bg3:"#1a1a20",bg4:"#222228",b1:"#1e1e24",t0:"#f4f4f6",t1:"#c8c8d0",t2:"#8888a0",t3:"#55556a",lime:"#b8f000",blue:"#5b9df5",orange:"#f5a623",red:"#f55353",green:"#34d399",purple:"#a78bfa",cyan:"#22d3ee",pink:"#f472b6",amber:"#fbbf24"};
 const z={
 card:{background:C.bg1,border:`1px solid ${C.b1}`,borderRadius:14,padding:"16px",marginBottom:14},
 lb:{fontSize:"0.6rem",textTransform:"uppercase",letterSpacing:2,color:C.t3,fontWeight:600,marginBottom:8},
@@ -286,7 +609,7 @@ const G3=({children})=>(<div style={{display:"grid",gridTemplateColumns:"repeat(
 
 /* === FITNESS === */
 const FitnessPage=()=>{
-const[flM,setFlM]=useState(null);const[compM,setCompM]=useState(false);
+const[flM,setFlM]=useState(null);const[compM,setCompM]=useState(false);const[tblPage,setTblPage]=useState(0);
 const dateFrom=gFitFrom,setDateFrom=setGFitFrom,dateTo=gFitTo,setDateTo=setGFitTo;
 const ffl=fl.filter(e=>{if(dateFrom&&e.date<dateFrom)return false;if(dateTo&&e.date>dateTo)return false;return true});
 const fitCards=S.fitCards||["weight","waist","cal","steps"];
@@ -300,13 +623,14 @@ const FMET=[
 {id:"fat",lb:"Prom Grasa",em:"🥑",unit:"g",color:C.red,calc:d=>avg(d.filter(e=>+e.fat>0),"fat"),delta:null},
 {id:"carbs",lb:"Prom Carbos",em:"🍚",unit:"g",color:C.green,calc:d=>avg(d.filter(e=>+e.carbs>0),"carbs"),delta:null},
 {id:"sugar",lb:"Prom Azúcar",em:"🍬",unit:"g",color:C.pink,calc:d=>avg(d.filter(e=>+e.sugar>0),"sugar"),delta:null},
+{id:"fiber",lb:"Prom Fibra",em:"🌾",unit:"g",color:C.amber,calc:d=>avg(d.filter(e=>+e.fiber>0),"fiber"),delta:null},
 {id:"sleep",lb:"Prom Sueño",em:"😴",unit:"hrs",color:C.cyan,calc:d=>{const s=d.filter(e=>+e.sleep>0);return s.length?(s.reduce((a,x)=>a+(+x.sleep||0),0)/s.length).toFixed(1):"—"},delta:null}
 ];
 const wPts=ffl.filter(e=>e.weight).map(e=>({v:+e.weight,label:e.date.slice(5)}));const wAvg=movAvg(ffl.filter(e=>e.weight),"weight");
 
 const FlModal=({idx,onClose})=>{
 const ex=idx!==null?fl[idx]:null;
-const[f,setF]=useState(ex||{date:todayS(),week:`S${currentWeek}`,dayType:"dt2",weight:"",waist:"",cal:"",prot:"",fat:"",carbs:"",sugar:"",steps:"",sleep:"",notes:""});
+const[f,setF]=useState(ex||{date:todayS(),week:`S${currentWeek}`,dayType:"dt2",weight:"",waist:"",cal:"",prot:"",fat:"",carbs:"",sugar:"",fiber:"",steps:"",sleep:"",notes:""});
 const dt=getDT(f.dayType);
 const submit=()=>{const log=[...fl];if(idx!==null)log[idx]={...f};else log.push({...f});log.sort((a,b)=>a.date.localeCompare(b.date));sv({...D,fitnessLog:log});onClose()};
 return(<Mdl title={idx!==null?"Editar Registro":"📊 Nuevo Registro"} onClose={onClose} wide ch={<div>
@@ -316,21 +640,21 @@ return(<Mdl title={idx!==null?"Editar Registro":"📊 Nuevo Registro"} onClose={
 <div style={{marginTop:10}}><G2><div><div style={{...z.lb,marginBottom:4}}>Peso (kg)</div><input style={z.inpM} type="number" step="0.1" value={f.weight} onChange={e=>setF({...f,weight:e.target.value})}/></div>
 <div><div style={{...z.lb,marginBottom:4}}>Cintura (cm)</div><input style={z.inpM} type="number" step="0.5" value={f.waist} onChange={e=>setF({...f,waist:e.target.value})}/></div></G2></div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(80px,1fr))",gap:8,marginTop:10}}>
-{[["Cal","cal",C.orange],["Prot","prot",C.blue],["Grasa","fat",C.red],["Carbos","carbs",C.green],["Azúcar","sugar",C.pink]].map(([l,k,c])=><div key={k}><div style={{...z.lb,marginBottom:4,color:c}}>{l}</div><input style={z.inpM} type="number" value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})}/></div>)}</div>
+{[["Cal","cal",C.orange],["Prot","prot",C.blue],["Grasa","fat",C.red],["Carbos","carbs",C.green],["Azúcar","sugar",C.pink],["Fibra","fiber",C.amber]].map(([l,k,c])=><div key={k}><div style={{...z.lb,marginBottom:4,color:c}}>{l}</div><input style={z.inpM} type="number" value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})}/></div>)}</div>
 <div style={{marginTop:10}}><G2><div><div style={{...z.lb,marginBottom:4}}>Pasos</div><input style={z.inpM} type="number" value={f.steps} onChange={e=>setF({...f,steps:e.target.value})}/></div>
 <div><div style={{...z.lb,marginBottom:4}}>Sueño</div><input style={z.inpM} type="number" step="0.5" value={f.sleep} onChange={e=>setF({...f,sleep:e.target.value})}/></div></G2></div>
 <div style={{marginTop:10}}><div style={{...z.lb,marginBottom:4}}>Notas del día</div><textarea style={{...z.inp,minHeight:55}} value={f.notes||""} onChange={e=>setF({...f,notes:e.target.value})} placeholder="¿Cómo fue tu día?"/></div>
-<div style={{padding:"10px 12px",background:C.bg2,borderRadius:8,margin:"10px 0",fontSize:"0.72rem",color:C.t2}}><b style={{color:C.t1}}>{dt.emoji} {dt.name}:</b> {dt.cal} kcal · {dt.prot}g P · {dt.carbs}g C · {dt.fat}g G · ≤{dt.sugar}g S · Rango cal: {dt.calMin}–{dt.calMax}</div>
+<div style={{padding:"10px 12px",background:C.bg2,borderRadius:8,margin:"10px 0",fontSize:"0.72rem",color:C.t2}}><b style={{color:C.t1}}>{dt.emoji} {dt.name}:</b> {dt.cal} kcal · {dt.prot}g P · {dt.carbs}g C · {dt.fat}g G · ≤{dt.sugar}g S · {dt.fiber||0}g F · Rango cal: {dt.calMin}–{dt.calMax}</div>
 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button style={z.btn(true)} onClick={submit}>{idx!==null?"Guardar":"Registrar"}</button><button style={z.btn(false)} onClick={onClose}>Cancelar</button>{idx!==null&&<button style={z.btnD} onClick={()=>{const l=[...fl];l.splice(idx,1);sv({...D,fitnessLog:l});onClose()}}>Eliminar</button>}</div>
 </div>}/>)};
 
 const CompEditor=({onClose})=>{
-const[f,setF]=useState({protRange:[...(S.protRange||[153,999])],fatRange:[...(S.fatRange||[0,75])],carbRange:[...(S.carbRange||[0,999])],sugarRange:[...(S.sugarRange||[0,40])]});
+const[f,setF]=useState({protRange:[...(S.protRange||[153,999])],fatRange:[...(S.fatRange||[0,75])],carbRange:[...(S.carbRange||[0,999])],sugarRange:[...(S.sugarRange||[0,40])],fiberRange:[...(S.fiberRange||[20,999])]});
 const[dtRanges,setDtRanges]=useState(dayTypes.map(t=>({id:t.id,name:t.name,emoji:t.emoji,calMin:t.calMin||0,calMax:t.calMax||9999})));
 const updDR=(i,k,v)=>{const n=[...dtRanges];n[i]={...n[i],[k]:+v};setDtRanges(n)};
 return(<Mdl title="⚙ Intervalos de Compliance" onClose={onClose} wide ch={<div>
-<p style={{fontSize:"0.76rem",color:C.t2,marginBottom:12}}>P✓ G✓ C✓ S✓ K✓ = valor dentro del intervalo. DÍA✓ = 4 de 5 checks. K✓ = calorías dentro del rango del tipo de día.</p>
-{[["Proteína (P✓)","protRange",C.blue],["Grasas (G✓)","fatRange",C.red],["Carbos (C✓)","carbRange",C.green],["Azúcar (S✓)","sugarRange",C.pink]].map(([l,k,c])=>(<div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}><span style={{width:120,fontSize:"0.78rem",color:c,fontWeight:600}}>{l}</span><span style={{fontSize:"0.7rem",color:C.t3}}>Min:</span><input style={{...z.inpM,maxWidth:75}} type="number" value={f[k][0]} onChange={e=>{const n=[...f[k]];n[0]=+e.target.value;setF({...f,[k]:n})}}/><span style={{fontSize:"0.7rem",color:C.t3}}>Max:</span><input style={{...z.inpM,maxWidth:75}} type="number" value={f[k][1]} onChange={e=>{const n=[...f[k]];n[1]=+e.target.value;setF({...f,[k]:n})}}/></div>))}
+<p style={{fontSize:"0.76rem",color:C.t2,marginBottom:12}}>P✓ G✓ C✓ S✓ F✓ K✓ = valor dentro del intervalo. DÍA✓ = 4 de 6 checks. K✓ = calorías dentro del rango del tipo de día.</p>
+{[["Proteína (P✓)","protRange",C.blue],["Grasas (G✓)","fatRange",C.red],["Carbos (C✓)","carbRange",C.green],["Azúcar (S✓)","sugarRange",C.pink],["Fibra (F✓)","fiberRange",C.amber]].map(([l,k,c])=>(<div key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}><span style={{width:120,fontSize:"0.78rem",color:c,fontWeight:600}}>{l}</span><span style={{fontSize:"0.7rem",color:C.t3}}>Min:</span><input style={{...z.inpM,maxWidth:75}} type="number" value={f[k][0]} onChange={e=>{const n=[...f[k]];n[0]=+e.target.value;setF({...f,[k]:n})}}/><span style={{fontSize:"0.7rem",color:C.t3}}>Max:</span><input style={{...z.inpM,maxWidth:75}} type="number" value={f[k][1]} onChange={e=>{const n=[...f[k]];n[1]=+e.target.value;setF({...f,[k]:n})}}/></div>))}
 <div style={{...z.lb,marginTop:14}}>🔥 Rango Calorías (K✓) por tipo de día</div>
 {dtRanges.map((dr,i)=>(<div key={dr.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}><span style={{width:130,fontSize:"0.78rem",fontWeight:500}}>{dr.emoji} {dr.name}</span><span style={{fontSize:"0.7rem",color:C.t3}}>Min:</span><input style={{...z.inpM,maxWidth:80}} type="number" value={dr.calMin} onChange={e=>updDR(i,"calMin",e.target.value)}/><span style={{fontSize:"0.7rem",color:C.t3}}>Max:</span><input style={{...z.inpM,maxWidth:80}} type="number" value={dr.calMax} onChange={e=>updDR(i,"calMax",e.target.value)}/></div>))}
 <div style={{display:"flex",gap:8,marginTop:14}}><button style={z.btn(true)} onClick={()=>{const ndt=dayTypes.map(t=>{const r=dtRanges.find(d=>d.id===t.id);return r?{...t,calMin:r.calMin,calMax:r.calMax}:t});sv({...D,settings:{...S,...f},dayTypes:ndt});onClose()}}>Guardar</button><button style={z.btn(false)} onClick={onClose}>Cancelar</button></div>
@@ -340,7 +664,7 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
 <div><div style={{fontSize:"1.3rem",fontWeight:700}}>🏋️ Mini-Cut Tracker</div><div style={{fontSize:"0.75rem",color:C.t3}}>{S.planGoal}</div></div>
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}><button style={z.btn(true)} onClick={()=>setFlM("new")}>+ Registro</button><button style={z.btnS(false)} onClick={()=>setCompM(true)}>⚙ Intervalos</button></div></div>
-<G3>{[["🔥 Cal",activeGP.cal,"kcal",C.orange,avg(ffl.filter(e=>+e.cal>0),"cal")],["🥩 Prot",activeGP.prot+"g","g",C.blue,avg(ffl.filter(e=>+e.prot>0),"prot")+"g"],["🥑 Grasa",activeGP.fat+"g","g",C.red,avg(ffl.filter(e=>+e.fat>0),"fat")+"g"],["🍚 Carbos",activeGP.carbs+"g","g",C.green,avg(ffl.filter(e=>+e.carbs>0),"carbs")+"g"],["🍬 Azúcar","≤"+activeGP.sugar+"g","g",C.pink,avg(ffl.filter(e=>+e.sugar>0),"sugar")+"g"],["💪 Entrenos",activeGP.trainingPerWeek+"x","sem",C.lime,""]].map(([l,v,u,c,real],i)=><div key={i} style={z.card}><div style={{...z.lb,color:c}}>{l} <span style={{fontSize:"0.5rem",color:C.t3}}>({activeGP.name})</span></div><div style={{fontFamily:"monospace",fontSize:"1.1rem",fontWeight:700}}>{v}</div>{real&&<div style={{fontSize:"0.6rem",color:C.t2,marginTop:2}}>Real: {real}</div>}<div style={{fontSize:"0.6rem",color:C.t3}}>{u}</div></div>)}</G3>
+<G3>{[["🔥 Cal",activeGP.cal,"kcal",C.orange,avg(ffl.filter(e=>+e.cal>0),"cal")],["🥩 Prot",activeGP.prot+"g","g",C.blue,avg(ffl.filter(e=>+e.prot>0),"prot")+"g"],["🥑 Grasa",activeGP.fat+"g","g",C.red,avg(ffl.filter(e=>+e.fat>0),"fat")+"g"],["🍚 Carbos",activeGP.carbs+"g","g",C.green,avg(ffl.filter(e=>+e.carbs>0),"carbs")+"g"],["🍬 Azúcar","≤"+activeGP.sugar+"g","g",C.pink,avg(ffl.filter(e=>+e.sugar>0),"sugar")+"g"],["🌾 Fibra",(activeGP.fiber||25)+"g","g",C.amber,avg(ffl.filter(e=>+e.fiber>0),"fiber")+"g"],["💪 Entrenos",activeGP.trainingPerWeek+"x","sem",C.lime,""]].map(([l,v,u,c,real],i)=><div key={i} style={z.card}><div style={{...z.lb,color:c}}>{l} <span style={{fontSize:"0.5rem",color:C.t3}}>({activeGP.name})</span></div><div style={{fontFamily:"monospace",fontSize:"1.1rem",fontWeight:700}}>{v}</div>{real&&<div style={{fontSize:"0.6rem",color:C.t2,marginTop:2}}>Real: {real}</div>}<div style={{fontSize:"0.6rem",color:C.t3}}>{u}</div></div>)}</G3>
 <div style={{...z.card,padding:"12px 16px",marginTop:4}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{...z.lb,marginBottom:0}}>Progreso</span><span style={{fontFamily:"monospace",fontSize:"0.72rem",color:C.lime}}>Día {Math.min(dayN,totalDays)}/{totalDays} — {prog}%</span></div><div style={{width:"100%",height:7,background:C.bg3,borderRadius:100,overflow:"hidden"}}><div style={{height:"100%",borderRadius:100,width:`${prog}%`,background:`linear-gradient(90deg,${C.lime},#8aff00)`}}/></div></div>
 <div style={{...z.card,padding:"10px 14px",marginTop:4,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
 <span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
@@ -366,23 +690,23 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 </div>)})}</G3>
 <G2><div style={z.card}><div style={{display:"flex",justifyContent:"space-between"}}><div style={z.lb}>Peso</div><div style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></div></div><Chart pts={wPts} pts2={wAvg} color={C.lime} color2={C.orange}/></div>
 <div style={z.card}><div style={z.lb}>Cintura</div><Chart pts={ffl.filter(e=>e.waist).map(e=>({v:+e.waist,label:e.date.slice(5)}))} color={C.cyan}/></div></G2>
-<div style={z.card}><div style={z.lb}>🎯 Macros por Tipo de Día</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:500}}><thead><tr>{["Tipo","Cal","Prot","Carbos","Grasa","Azúcar","Rango Cal"].map(h=><th key={h} style={z.th}>{h}</th>)}</tr></thead>
-<tbody>{dayTypes.map(t=>(<tr key={t.id}><td style={{...z.td,fontWeight:600}}>{t.emoji} {t.name}</td><td style={{...z.td,fontFamily:"monospace"}}>{t.cal}</td><td style={{...z.td,fontFamily:"monospace"}}>{t.prot}g</td><td style={{...z.td,fontFamily:"monospace"}}>{t.carbs}g</td><td style={{...z.td,fontFamily:"monospace"}}>{t.fat}g</td><td style={{...z.td,fontFamily:"monospace"}}>≤{t.sugar}g</td><td style={{...z.td,fontFamily:"monospace",color:C.orange}}>{t.calMin}–{t.calMax}</td></tr>))}</tbody></table></div></div>
+<div style={z.card}><div style={z.lb}>🎯 Macros por Tipo de Día</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:550}}><thead><tr>{["Tipo","Cal","Prot","Carbos","Grasa","Azúcar","Fibra","Rango Cal"].map(h=><th key={h} style={z.th}>{h}</th>)}</tr></thead>
+<tbody>{dayTypes.map(t=>(<tr key={t.id}><td style={{...z.td,fontWeight:600}}>{t.emoji} {t.name}</td><td style={{...z.td,fontFamily:"monospace"}}>{t.cal}</td><td style={{...z.td,fontFamily:"monospace"}}>{t.prot}g</td><td style={{...z.td,fontFamily:"monospace"}}>{t.carbs}g</td><td style={{...z.td,fontFamily:"monospace"}}>{t.fat}g</td><td style={{...z.td,fontFamily:"monospace"}}>≤{t.sugar}g</td><td style={{...z.td,fontFamily:"monospace",color:C.amber}}>{t.fiber||0}g</td><td style={{...z.td,fontFamily:"monospace",color:C.orange}}>{t.calMin}–{t.calMax}</td></tr>))}</tbody></table></div></div>
 <div style={{...z.card,padding:"10px 16px",display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
 <span style={{...z.lb,marginBottom:0}}>Intervalos:</span>
-{[["P✓",S.protRange||[153,999],C.blue],["G✓",S.fatRange||[0,75],C.red],["C✓",S.carbRange||[0,999],C.green],["S✓",S.sugarRange||[0,40],C.pink]].map(([l,r,c])=><span key={l} style={{fontSize:"0.68rem",color:c,fontWeight:600}}>{l}:{r[0]}–{r[1]}g</span>)}
+{[["P✓",S.protRange||[153,999],C.blue],["G✓",S.fatRange||[0,75],C.red],["C✓",S.carbRange||[0,999],C.green],["S✓",S.sugarRange||[0,40],C.pink],["F✓",S.fiberRange||[20,999],C.amber]].map(([l,r,c])=><span key={l} style={{fontSize:"0.68rem",color:c,fontWeight:600}}>{l}:{r[0]}–{r[1]}g</span>)}
 <span style={{fontSize:"0.68rem",color:C.orange,fontWeight:600}}>K✓: por tipo</span>
-<span style={{fontSize:"0.68rem",color:C.t3}}>DÍA✓=4/5</span></div>
-<div style={z.card}><div style={z.lb}>📊 Progreso Semanal</div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:750}}>
-<thead><tr>{["Fecha","Tipo","Peso","Cintura","Cal","Prot","Grasa","Carbos","Azúcar","Pasos","P✓","G✓","C✓","S✓","K✓","DÍA"].map(h=><th key={h} style={{...z.th,padding:"5px 3px"}}>{h}</th>)}</tr></thead>
-<tbody>{ffl.map((e,i)=>{const oi=fl.indexOf(e);const comp=chkComp(e);const dt=getDT(e.dayType);return(<tr key={oi} style={{cursor:"pointer"}} onClick={()=>setFlM(oi)}>
+<span style={{fontSize:"0.68rem",color:C.t3}}>DÍA✓=4/6</span></div>
+{(()=>{const PAGE_SIZE=10;const totalPages=Math.max(1,Math.ceil(ffl.length/PAGE_SIZE));const safePage=Math.min(tblPage,totalPages-1);const pageData=ffl.slice(safePage*PAGE_SIZE,(safePage+1)*PAGE_SIZE);return(<div style={z.card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><div style={z.lb}>📊 Progreso Semanal</div><div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={()=>setTblPage(Math.max(0,safePage-1))} disabled={safePage===0} style={{background:"none",border:`1px solid ${safePage===0?C.b1:C.lime}`,borderRadius:6,color:safePage===0?C.t3:C.lime,cursor:safePage===0?"default":"pointer",padding:"4px 10px",fontSize:"0.72rem",fontWeight:700,fontFamily:"inherit"}}>◀</button><span style={{fontSize:"0.65rem",color:C.t2,fontFamily:"monospace"}}>{safePage+1}/{totalPages}</span><button onClick={()=>setTblPage(Math.min(totalPages-1,safePage+1))} disabled={safePage>=totalPages-1} style={{background:"none",border:`1px solid ${safePage>=totalPages-1?C.b1:C.lime}`,borderRadius:6,color:safePage>=totalPages-1?C.t3:C.lime,cursor:safePage>=totalPages-1?"default":"pointer",padding:"4px 10px",fontSize:"0.72rem",fontWeight:700,fontFamily:"inherit"}}>▶</button></div></div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:750}}>
+<thead style={{position:"sticky",top:0,zIndex:1,background:C.bg1}}><tr>{["Fecha","Tipo","Peso","Cintura","Cal","Prot","Grasa","Carbos","Azúcar","Fibra","Pasos","P✓","G✓","C✓","S✓","F✓","K✓","DÍA"].map(h=><th key={h} style={{...z.th,padding:"5px 3px"}}>{h}</th>)}</tr></thead>
+<tbody>{pageData.map((e,i)=>{const oi=fl.indexOf(e);const comp=chkComp(e);const dt=getDT(e.dayType);return(<tr key={oi} style={{cursor:"pointer"}} onClick={()=>setFlM(oi)}>
 <td style={{...z.td,fontFamily:"monospace",fontSize:"0.68rem"}}>{e.date.slice(5)}</td><td style={z.td}>{dt.emoji}</td>
 <td style={{...z.td,fontFamily:"monospace",fontWeight:600}}>{e.weight||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.waist||"—"}</td>
-<td style={{...z.td,fontFamily:"monospace"}}>{e.cal||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.prot||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.fat||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.carbs||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.sugar||"—"}</td>
+<td style={{...z.td,fontFamily:"monospace"}}>{e.cal||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.prot||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.fat||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.carbs||"—"}</td><td style={{...z.td,fontFamily:"monospace"}}>{e.sugar||"—"}</td><td style={{...z.td,fontFamily:"monospace",color:C.amber}}>{e.fiber||"—"}</td>
 <td style={{...z.td,fontFamily:"monospace"}}>{(+e.steps||0).toLocaleString()}</td>
-{[comp.p,comp.g,comp.c,comp.s,comp.k].map((v,j)=><td key={j} style={{...z.td,textAlign:"center"}}><span style={{color:v?C.green:C.red,fontWeight:700}}>{v?"✓":"✗"}</span></td>)}
+{[comp.p,comp.g,comp.c,comp.s,comp.fb,comp.k].map((v,j)=><td key={j} style={{...z.td,textAlign:"center"}}><span style={{color:v?C.green:C.red,fontWeight:700}}>{v?"✓":"✗"}</span></td>)}
 <td style={{...z.td,textAlign:"center"}}><span style={{color:comp.day?C.green:C.red,fontWeight:800,fontSize:"0.85rem"}}>{comp.day?"✓":"✗"}</span></td>
-</tr>)})}</tbody></table></div></div>
+</tr>)})}</tbody></table></div></div>)})()}
 {ffl.filter(e=>e.notes).length>0&&<div style={z.card}><div style={z.lb}>📝 Notas</div>{ffl.filter(e=>e.notes).slice(-5).reverse().map((e,i)=>(<div key={i} style={{padding:"7px 0",borderBottom:`1px solid ${C.b1}`}}><span style={{fontFamily:"monospace",fontSize:"0.65rem",color:C.t3}}>{e.date}</span> {getDT(e.dayType).emoji}<div style={{fontSize:"0.8rem",color:C.t1,marginTop:3}}>{e.notes}</div></div>))}</div>}
 {flM==="new"&&<FlModal idx={null} onClose={()=>setFlM(null)}/>}
 {typeof flM==="number"&&<FlModal idx={flM} onClose={()=>setFlM(null)}/>}
@@ -578,6 +902,7 @@ const TREND_METRICS=[
 {id:"fat",lb:"Grasas",key:"fat",unit:"g",color:C.red,filter:e=>+e.fat>0},
 {id:"carbs",lb:"Carbos",key:"carbs",unit:"g",color:C.cyan,filter:e=>+e.carbs>0},
 {id:"sugar",lb:"Azúcar",key:"sugar",unit:"g",color:C.pink,filter:e=>+e.sugar>0},
+{id:"fiber",lb:"Fibra",key:"fiber",unit:"g",color:C.amber,filter:e=>+e.fiber>0},
 {id:"waist",lb:"Cintura",key:"waist",unit:"cm",color:C.purple,filter:e=>e.waist},
 {id:"sleep",lb:"Sueño",key:"sleep",unit:"hrs",color:C.cyan,filter:e=>+e.sleep>0}
 ];
@@ -633,13 +958,14 @@ return(<div key={ci} style={z.card}>
 /* === WEEKLY REPORT === */
 const RPT_METRICS=[
 {id:"weight",lb:"Δ Peso",em:"⚖️",unit:"kg",color:C.lime,calc:d=>{const wS2=d.length>0?+d[0].weight:S.startWeight;const wE2=d.length>0?+d[d.length-1].weight:S.startWeight;return(wS2-wE2).toFixed(1)},txt:d=>{const wS2=d.length>0?+d[0].weight:S.startWeight;const wE2=d.length>0?+d[d.length-1].weight:S.startWeight;return`Peso: ${wS2} → ${wE2} kg (${(wS2-wE2).toFixed(1)} kg)`}},
-{id:"cal",lb:"Prom Cal",em:"🔥",unit:"kcal",color:C.orange,calc:d=>{const f=d.filter(e=>+e.cal>0);return f.length?(f.reduce((a,e)=>a+(+e.cal),0)/f.length).toFixed(0):"0"},txt:d=>`Cal promedio: ${RPT_METRICS.find(m=>m.id==="cal").calc(d)} kcal/día`},
-{id:"prot",lb:"Prom Prot",em:"🥩",unit:"g",color:C.blue,calc:d=>{const f=d.filter(e=>+e.prot>0);return f.length?(f.reduce((a,e)=>a+(+e.prot),0)/f.length).toFixed(0):"0"},txt:d=>`Prot promedio: ${RPT_METRICS.find(m=>m.id==="prot").calc(d)}g/día`},
+{id:"cal",lb:"Prom Cal",em:"🔥",unit:"kcal",color:C.orange,calc:d=>{const f=d.filter(e=>+e.cal>0);return f.length?(f.reduce((a,e)=>a+(+e.cal),0)/f.length).toFixed(1):"0"},txt:d=>`Cal promedio: ${RPT_METRICS.find(m=>m.id==="cal").calc(d)} kcal/día`},
+{id:"prot",lb:"Prom Prot",em:"🥩",unit:"g",color:C.blue,calc:d=>{const f=d.filter(e=>+e.prot>0);return f.length?(f.reduce((a,e)=>a+(+e.prot),0)/f.length).toFixed(1):"0"},txt:d=>`Prot promedio: ${RPT_METRICS.find(m=>m.id==="prot").calc(d)}g/día`},
 {id:"comp",lb:"Compliance",em:"✓",unit:"días",color:C.green,calc:d=>d.filter(e=>chkComp(e).day).length+"/"+d.length,txt:d=>`Días compliance: ${d.filter(e=>chkComp(e).day).length}/${d.length}`},
 {id:"steps",lb:"Prom Pasos",em:"👟",unit:"pasos",color:C.purple,calc:d=>{const f=d.filter(e=>+e.steps>0);return f.length?(f.reduce((a,e)=>a+(+e.steps),0)/f.length).toFixed(0):"0"},txt:d=>`Pasos promedio: ${(+RPT_METRICS.find(m=>m.id==="steps").calc(d)).toLocaleString()}`},
-{id:"fat",lb:"Prom Grasa",em:"🥑",unit:"g",color:C.red,calc:d=>{const f=d.filter(e=>+e.fat>0);return f.length?(f.reduce((a,e)=>a+(+e.fat),0)/f.length).toFixed(0):"0"},txt:d=>`Grasa promedio: ${RPT_METRICS.find(m=>m.id==="fat").calc(d)}g/día`},
-{id:"carbs",lb:"Prom Carbos",em:"🍚",unit:"g",color:C.cyan,calc:d=>{const f=d.filter(e=>+e.carbs>0);return f.length?(f.reduce((a,e)=>a+(+e.carbs),0)/f.length).toFixed(0):"0"},txt:d=>`Carbos promedio: ${RPT_METRICS.find(m=>m.id==="carbs").calc(d)}g/día`},
-{id:"sugar",lb:"Prom Azúcar",em:"🍬",unit:"g",color:C.pink,calc:d=>{const f=d.filter(e=>+e.sugar>0);return f.length?(f.reduce((a,e)=>a+(+e.sugar),0)/f.length).toFixed(0):"0"},txt:d=>`Azúcar promedio: ${RPT_METRICS.find(m=>m.id==="sugar").calc(d)}g/día`},
+{id:"fat",lb:"Prom Grasa",em:"🥑",unit:"g",color:C.red,calc:d=>{const f=d.filter(e=>+e.fat>0);return f.length?(f.reduce((a,e)=>a+(+e.fat),0)/f.length).toFixed(1):"0"},txt:d=>`Grasa promedio: ${RPT_METRICS.find(m=>m.id==="fat").calc(d)}g/día`},
+{id:"carbs",lb:"Prom Carbos",em:"🍚",unit:"g",color:C.cyan,calc:d=>{const f=d.filter(e=>+e.carbs>0);return f.length?(f.reduce((a,e)=>a+(+e.carbs),0)/f.length).toFixed(1):"0"},txt:d=>`Carbos promedio: ${RPT_METRICS.find(m=>m.id==="carbs").calc(d)}g/día`},
+{id:"sugar",lb:"Prom Azúcar",em:"🍬",unit:"g",color:C.pink,calc:d=>{const f=d.filter(e=>+e.sugar>0);return f.length?(f.reduce((a,e)=>a+(+e.sugar),0)/f.length).toFixed(1):"0"},txt:d=>`Azúcar promedio: ${RPT_METRICS.find(m=>m.id==="sugar").calc(d)}g/día`},
+{id:"fiber",lb:"Prom Fibra",em:"🌾",unit:"g",color:C.amber,calc:d=>{const f=d.filter(e=>+e.fiber>0);return f.length?(f.reduce((a,e)=>a+(+e.fiber),0)/f.length).toFixed(1):"0"},txt:d=>`Fibra promedio: ${RPT_METRICS.find(m=>m.id==="fiber").calc(d)}g/día`},
 {id:"sleep",lb:"Prom Sueño",em:"😴",unit:"hrs",color:C.cyan,calc:d=>{const f=d.filter(e=>+e.sleep>0);return f.length?(f.reduce((a,e)=>a+(+e.sleep),0)/f.length).toFixed(1):"—"},txt:d=>`Sueño promedio: ${RPT_METRICS.find(m=>m.id==="sleep").calc(d)} hrs`}
 ];
 const ReportPage=()=>{
@@ -650,17 +976,12 @@ const activeH=habits.filter(h=>h.active);
 const rDates=rfl.length>0?rfl.map(e=>e.date):getWk();
 let habTot=0,habMax=0;activeH.forEach(h=>{rDates.forEach(dt=>{habMax++;if(hw[`${dt}_${h.id}`])habTot++})});
 const habPct=habMax>0?Math.round(habTot/habMax*100):0;
-const rptCards=RPT_METRICS.map(m=>m.id);
-const rptCharts=S.rptCharts||["cal","prot"];
-const setRChart=(idx,mid)=>{const nc=[...rptCharts];nc[idx]=mid;sv({...D,settings:{...S,rptCharts:nc}})};
-const addRChart=()=>{const avail=TREND_METRICS.find(m=>!rptCharts.includes(m.id));if(avail)sv({...D,settings:{...S,rptCharts:[...rptCharts,avail.id]}})};
-const rmRChart=idx=>{if(rptCharts.length<=1)return;const nc=[...rptCharts];nc.splice(idx,1);sv({...D,settings:{...S,rptCharts:nc}})};
 const[copied,setCopied]=useState(false);
 const periodLabel=(rDateFrom||rDateTo)?`${rDateFrom||"inicio"} → ${rDateTo||"hoy"}`:"Última semana";
 const rpt=`📊 REPORTE — ${S.planName}\n${"─".repeat(35)}\n📅 Periodo: ${periodLabel} (${dataSet.length} días)\n\n🏋️ FITNESS\n${RPT_METRICS.map(m=>`• ${m.txt(dataSet)}`).join("\n")}\n\n🎯 HÁBITOS: ${habPct}%\n${activeH.map(h=>{let c=0;rDates.forEach(dt=>{if(hw[`${dt}_${h.id}`])c++});return`• ${h.emoji} ${h.name}: ${c}/${rDates.length}`}).join("\n")}\n\n📂 PROYECTOS\n${projects.map(p=>`• ${p.name}: ${p.progress}% — ${p.status}`).join("\n")}\n\n📚 LECTURA\n${books.filter(b=>b.status==="reading").map(b=>`• ${b.title}: ${b.progress}%`).join("\n")}\n\n📅 ${new Date().toLocaleDateString("es",{day:"numeric",month:"long",year:"numeric"})}`;
 const copy=()=>{navigator.clipboard.writeText(rpt).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)})};
 return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📋 Reporte</div><div style={{display:"flex",gap:6}}>{rptCharts.length<TREND_METRICS.length&&<button style={z.btnS(false)} onClick={addRChart}>+ Gráfica</button>}<button style={z.btn(true)} onClick={copy}>{copied?"✓ Copiado!":"📋 Copiar"}</button></div></div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}><div style={{fontSize:"1.3rem",fontWeight:700}}>📋 Reporte</div><button style={z.btn(true)} onClick={copy}>{copied?"✓ Copiado!":"📋 Copiar"}</button></div>
 <div style={{...z.card,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
 <span style={{fontSize:"0.72rem",fontWeight:600,color:C.t2}}>📅 Filtrar</span>
 <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -674,23 +995,6 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 {(rDateFrom||rDateTo)&&<button style={{...z.btnS(false),padding:"4px 10px",fontSize:"0.65rem"}} onClick={()=>{setRDateFrom("");setRDateTo("")}}>✕ Reset</button>}
 {(rDateFrom||rDateTo)&&<span style={{fontSize:"0.63rem",color:C.lime,fontWeight:600}}>{rfl.length} días</span>}
 </div>
-<G3>{rptCards.map((mid,ci)=>{const m=RPT_METRICS.find(x=>x.id===mid)||RPT_METRICS[0];const val=m.calc(dataSet);return(<div key={ci} style={z.card}>
-<div style={{fontSize:"0.6rem",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",color:m.color,marginBottom:4}}>{m.em} {m.lb}</div>
-<div style={z.big}>{val}</div><div style={{fontSize:"0.72rem",color:C.t2,marginTop:3}}>{m.unit}</div></div>)})}</G3>
-<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>{rptCharts.map((mid,ci)=>{const m=TREND_METRICS.find(x=>x.id===mid)||TREND_METRICS[0];
-const pts=dataSet.filter(m.filter).map(e=>({v:+e[m.key],label:e.date.slice(5)}));
-const avg7=movAvg(dataSet.filter(m.filter),m.key);
-return(<div key={ci} style={z.card}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-<select style={{background:"transparent",border:"none",color:m.color,fontSize:"0.6rem",fontWeight:700,letterSpacing:0.5,textTransform:"uppercase",cursor:"pointer",padding:0,fontFamily:"inherit",outline:"none",appearance:"auto",WebkitAppearance:"menulist",colorScheme:"dark"}} value={mid} onChange={e=>setRChart(ci,e.target.value)}>
-{TREND_METRICS.map(o=><option key={o.id} value={o.id}>{o.lb} ({o.unit})</option>)}
-</select>
-<div style={{display:"flex",alignItems:"center",gap:6}}>
-<span style={{fontSize:"0.5rem",color:C.t3}}>— Real <span style={{color:C.orange}}>--- 7d</span></span>
-{rptCharts.length>1&&<button style={{background:"none",border:"none",color:C.red+"55",cursor:"pointer",fontSize:"0.55rem"}} onClick={()=>rmRChart(ci)}>✕</button>}
-</div></div>
-<Chart pts={pts} pts2={avg7} color={m.color} color2={C.orange} h={130}/>
-</div>)})}</div>
 <div style={z.card}><div style={z.lb}>Vista previa</div><pre style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:"0.7rem",color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.7,background:C.bg0,padding:14,borderRadius:10,border:`1px solid ${C.b1}`,overflowX:"auto"}}>{rpt}</pre></div>
 </div>)};
 
@@ -710,17 +1014,20 @@ return(<div style={{animation:"fadeIn 0.3s ease-out"}}>
 const[goalsEdit,setGoalsEdit]=useState(false);
 const[gf,setGf]=useState(null);
 const wkFl=fl.filter(e=>{const w=getWk();return w.includes(e.date)});
-const realCal=wkFl.length>0?Math.round(wkFl.filter(e=>+e.cal>0).reduce((a,x)=>a+(+x.cal||0),0)/wkFl.filter(e=>+e.cal>0).length):0;
-const realProt=wkFl.length>0?Math.round(wkFl.filter(e=>+e.prot>0).reduce((a,x)=>a+(+x.prot||0),0)/wkFl.filter(e=>+e.prot>0).length):0;
-const realFat=wkFl.length>0?Math.round(wkFl.filter(e=>+e.fat>0).reduce((a,x)=>a+(+x.fat||0),0)/wkFl.filter(e=>+e.fat>0).length):0;
-const realCarbs=wkFl.length>0?Math.round(wkFl.filter(e=>+e.carbs>0).reduce((a,x)=>a+(+x.carbs||0),0)/wkFl.filter(e=>+e.carbs>0).length):0;
-const realSugar=wkFl.length>0?Math.round(wkFl.filter(e=>+e.sugar>0).reduce((a,x)=>a+(+x.sugar||0),0)/wkFl.filter(e=>+e.sugar>0).length):0;
+const r1d=(arr,k)=>{const f=arr.filter(e=>+e[k]>0);return f.length>0?Math.round(f.reduce((a,x)=>a+(+x[k]||0),0)/f.length*10)/10:0};
+const realCal=r1d(wkFl,"cal");
+const realProt=r1d(wkFl,"prot");
+const realFat=r1d(wkFl,"fat");
+const realCarbs=r1d(wkFl,"carbs");
+const realSugar=r1d(wkFl,"sugar");
+const realFiber=r1d(wkFl,"fiber");
 const goalRows=[
 {lb:"Calorías",key:"cal",em:"🔥",c:C.orange,unit:"kcal",goal:activeGP.cal,real:realCal},
 {lb:"Proteína",key:"prot",em:"🥩",c:C.blue,unit:"g",goal:activeGP.prot,real:realProt},
 {lb:"Grasas",key:"fat",em:"🥑",c:C.red,unit:"g",goal:activeGP.fat,real:realFat},
 {lb:"Carbos",key:"carbs",em:"🍚",c:C.green,unit:"g",goal:activeGP.carbs,real:realCarbs},
 {lb:"Azúcar máx",key:"sugar",em:"🍬",c:C.pink,unit:"g",goal:activeGP.sugar,real:realSugar},
+{lb:"Fibra",key:"fiber",em:"🌾",c:C.amber,unit:"g",goal:activeGP.fiber||25,real:realFiber},
 {lb:"Entrenos/sem",key:"trainingPerWeek",em:"💪",c:C.lime,unit:"x",goal:activeGP.trainingPerWeek,real:""}
 ];
 return(<div style={z.card}>
@@ -742,7 +1049,7 @@ return(<div style={z.card}>
 {goalsEdit&&gf&&<div style={{marginTop:12,padding:14,background:C.bg2,borderRadius:10,border:`1px solid ${C.b1}`}}>
 <div style={{fontSize:"0.78rem",fontWeight:600,marginBottom:10}}>Editar perfil: {gf.name}</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8,marginBottom:10}}>
-{[["Calorías","cal"],["Proteína","prot"],["Grasas","fat"],["Carbos","carbs"],["Azúcar máx","sugar"],["Entrenos/sem","trainingPerWeek"]].map(([l,k])=>(<div key={k}><div style={{fontSize:"0.58rem",color:C.t3,marginBottom:3}}>{l}</div><input style={z.inpM} type="number" value={gf[k]} onChange={e=>setGf({...gf,[k]:validateGoal(k,e.target.value)})}/></div>))}
+{[["Calorías","cal"],["Proteína","prot"],["Grasas","fat"],["Carbos","carbs"],["Azúcar máx","sugar"],["Fibra","fiber"],["Entrenos/sem","trainingPerWeek"]].map(([l,k])=>(<div key={k}><div style={{fontSize:"0.58rem",color:C.t3,marginBottom:3}}>{l}</div><input style={z.inpM} type="number" value={gf[k]} onChange={e=>setGf({...gf,[k]:validateGoal(k,e.target.value)})}/></div>))}
 </div>
 <div style={{display:"flex",gap:6}}>
 <button style={z.btn(true)} onClick={()=>{updGoalProfile(activeGP.id,gf);setGoalsEdit(false)}}>Guardar</button>
@@ -792,58 +1099,214 @@ return(<div style={z.card}>
 </div>
 </div>)};
 
-/* === AI ASSISTANT (Gemini) === */
-const GEMINI_MODELS=["gemini-2.0-flash-lite","gemini-2.0-flash"];
-const geminiURL=(model,key)=>`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+/* === FOOD DB MANAGER COMPONENT === */
+const FoodDBManager=({personalFoods,onSave})=>{
+const[search,setSearch]=useState("");
+const[tab,setTab]=useState("personal");/* personal | referencia */
+const[editIdx,setEditIdx]=useState(null);
+const[form,setForm]=useState({alimento:"",estado:"Natural",kcal:"",proteina_g:"",grasas_g:"",carbs_g:"",azucar_g:"0",fibra_g:"0"});
+
+const filtered=(tab==="personal"?personalFoods:FOOD_DB).filter(f=>{
+  if(!search)return true;
+  return normFood(f.alimento).includes(normFood(search))||normFood(f.estado).includes(normFood(search));
+});
+
+const startEdit=(idx)=>{
+  const f=personalFoods[idx];
+  setForm({alimento:f.alimento,estado:f.estado,kcal:f.kcal,proteina_g:f.proteina_g,grasas_g:f.grasas_g,carbs_g:f.carbs_g,azucar_g:f.azucar_g||0,fibra_g:f.fibra_g||0});
+  setEditIdx(idx);
+};
+
+const saveEdit=()=>{
+  const entry={alimento:form.alimento.trim(),estado:form.estado,kcal:+form.kcal||0,proteina_g:+form.proteina_g||0,grasas_g:+form.grasas_g||0,grasas_saturadas_g:0,carbs_g:+form.carbs_g||0,azucar_g:+form.azucar_g||0,fibra_g:+form.fibra_g||0,sodio_mg:0,colesterol_mg:0};
+  if(!entry.alimento)return;
+  const newFoods=[...personalFoods];
+  if(editIdx!==null&&editIdx>=0)newFoods[editIdx]=entry;
+  else newFoods.push(entry);
+  onSave(newFoods);
+  setEditIdx(null);setForm({alimento:"",estado:"Natural",kcal:"",proteina_g:"",grasas_g:"",carbs_g:"",azucar_g:"0",fibra_g:"0"});
+};
+
+const deleteFood=(idx)=>{
+  const newFoods=[...personalFoods];newFoods.splice(idx,1);onSave(newFoods);
+};
+
+const copyToPersonal=(entry)=>{
+  const newFoods=[...personalFoods,{...entry}];
+  onSave(newFoods);
+};
+
+return(<div style={{flex:1,overflowY:"auto",padding:"10px 12px",display:"flex",flexDirection:"column",gap:8}}>
+{/* Search */}
+<input style={{...z.inp,fontSize:"0.72rem",padding:"7px 10px"}} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar alimento..."/>
+{/* Tabs */}
+<div style={{display:"flex",gap:4}}>
+{[["personal",`🟢 Mis alimentos (${personalFoods.length})`],["referencia",`🔵 Referencia (${FOOD_DB.length})`]].map(([t,l])=>(
+<button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"5px",borderRadius:6,border:`1px solid ${tab===t?C.green:C.b1}`,background:tab===t?C.green+"20":"transparent",color:tab===t?C.t0:C.t3,fontSize:"0.6rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+))}
+</div>
+
+{/* Add/Edit form */}
+{(editIdx!==null||tab==="personal")&&<div style={{padding:8,background:C.bg3,borderRadius:8,border:`1px solid ${C.b1}`}}>
+<div style={{fontSize:"0.65rem",fontWeight:600,color:C.green,marginBottom:6}}>{editIdx!==null&&editIdx>=0?"✏️ Editando":"➕ Agregar alimento"} (macros por 100g)</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:4,marginBottom:4}}>
+<input style={{...z.inp,fontSize:"0.68rem",padding:"5px 8px"}} value={form.alimento} onChange={e=>setForm({...form,alimento:e.target.value})} placeholder="Nombre del alimento"/>
+<select style={{...z.inp,fontSize:"0.68rem",padding:"5px 4px"}} value={form.estado} onChange={e=>setForm({...form,estado:e.target.value})}>
+{["Natural","Cocido","Cocida","Crudo","Cruda","Polvo"].map(s=><option key={s} value={s}>{s}</option>)}
+</select>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4}}>
+{[["kcal","Cal"],["proteina_g","Prot"],["grasas_g","Grasa"],["carbs_g","Carbs"],["azucar_g","Azúcar"],["fibra_g","Fibra"]].map(([k,l])=>(
+<div key={k}><div style={{fontSize:"0.5rem",color:C.t3}}>{l}</div>
+<input style={{...z.inp,fontSize:"0.68rem",padding:"4px 6px",width:"100%"}} type="number" step="0.1" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} placeholder="0"/></div>
+))}
+</div>
+<div style={{display:"flex",gap:4,marginTop:6}}>
+<button style={{...z.btn(true),flex:1,padding:"5px",fontSize:"0.65rem"}} onClick={saveEdit}>{editIdx!==null&&editIdx>=0?"Guardar":"Agregar"}</button>
+{editIdx!==null&&editIdx>=0&&<button style={{...z.btn(false),padding:"5px",fontSize:"0.65rem"}} onClick={()=>{setEditIdx(null);setForm({alimento:"",estado:"Natural",kcal:"",proteina_g:"",grasas_g:"",carbs_g:"",azucar_g:"0",fibra_g:"0"})}}>Cancelar</button>}
+</div>
+</div>}
+
+{/* Food list */}
+<div style={{flex:1,overflowY:"auto"}}>
+{filtered.length===0&&<div style={{textAlign:"center",padding:20,color:C.t3,fontSize:"0.7rem"}}>{tab==="personal"?"No tienes alimentos personales aún.\nUsa el formulario de arriba o escribe en Comida:\n\"agregar arroz cocido 100g 130cal 2.5P 0.3G 28C\"":"No se encontraron resultados."}</div>}
+{filtered.map((f,i)=>{
+  const realIdx=tab==="personal"?personalFoods.indexOf(f):-1;
+  return(<div key={i} style={{padding:"6px 0",borderBottom:`1px solid ${C.b1}`,fontSize:"0.68rem"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div><span style={{fontWeight:600,color:C.t0}}>{f.alimento}</span> <span style={{color:C.t3,fontSize:"0.58rem"}}>({f.estado})</span></div>
+      <div style={{display:"flex",gap:3}}>
+        {tab==="personal"&&<button style={{background:"none",border:"none",color:C.cyan,cursor:"pointer",fontSize:"0.65rem",padding:"2px 4px"}} onClick={()=>startEdit(realIdx)}>✏️</button>}
+        {tab==="personal"&&<button style={{background:"none",border:"none",color:C.red,cursor:"pointer",fontSize:"0.65rem",padding:"2px 4px"}} onClick={()=>deleteFood(realIdx)}>🗑️</button>}
+        {tab==="referencia"&&<button style={{background:"none",border:"none",color:C.green,cursor:"pointer",fontSize:"0.55rem",padding:"2px 4px"}} title="Copiar a mis alimentos" onClick={()=>copyToPersonal(f)}>📋→🟢</button>}
+      </div>
+    </div>
+    <div style={{color:C.t2,fontSize:"0.58rem",fontFamily:"monospace"}}>{f.kcal}cal {f.proteina_g}P {f.grasas_g}G {f.carbs_g}C {f.azucar_g}S {f.fibra_g}F /100g</div>
+  </div>);
+})}
+</div>
+</div>);
+};
+
+/* === AI ASSISTANT (Gemini + Groq) === */
+const GEMINI_ENDPOINTS=[
+  {model:"gemini-2.0-flash-lite",ver:"v1beta"},
+  {model:"gemini-2.0-flash",ver:"v1beta"},
+  {model:"gemini-2.0-flash-lite",ver:"v1"},
+  {model:"gemini-2.0-flash",ver:"v1"},
+];
+const geminiURL=(model,ver,key)=>`https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${key}`;
 const callGemini=async(prompt,apiKey,onStatus)=>{
   const maxRetries=3;const errors=[];
   for(let attempt=0;attempt<maxRetries;attempt++){
-    for(const model of GEMINI_MODELS){
+    for(const ep of GEMINI_ENDPOINTS){
       try{
-        if(onStatus)onStatus(`${model}${attempt>0?` (intento ${attempt+1}/${maxRetries})`:""}...`);
-        const res=await fetch(geminiURL(model,apiKey),{method:"POST",headers:{"Content-Type":"application/json"},
+        const label=`${ep.model} (${ep.ver})`;
+        if(onStatus)onStatus(`${label}${attempt>0?` intento ${attempt+1}/${maxRetries}`:""}...`);
+        const res=await fetch(geminiURL(ep.model,ep.ver,apiKey),{method:"POST",headers:{"Content-Type":"application/json"},
           body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:2048}})});
-        if(res.status===429){errors.push(`${model}: 429 cuota`);continue}
-        if(res.status===404){errors.push(`${model}: 404 no disponible`);continue}
-        if(res.status===400){const e=await res.text();throw new Error(`API Key inválida. Verifica en aistudio.google.com/apikey\n(${e.slice(0,100)})`)}
-        if(res.status===403){const e=await res.text();throw new Error(`Sin permisos. Habilita "Generative Language API" en tu proyecto.\n(${e.slice(0,100)})`)}
-        if(!res.ok){const e=await res.text();throw new Error(`${model} error ${res.status}: ${e.slice(0,150)}`)}
+        if(res.status===429){errors.push(`${label}: 429`);continue}
+        if(res.status===404){errors.push(`${label}: 404`);continue}
+        if(res.status===400){const e=await res.text();
+          if(e.includes("API_KEY_INVALID"))throw new Error("KEY_INVALID");
+          errors.push(`${label}: 400`);continue}
+        if(res.status===403){throw new Error("NO_PERMS")}
+        if(!res.ok){errors.push(`${label}: ${res.status}`);continue}
         const data=await res.json();
         const text=data.candidates?.[0]?.content?.parts?.[0]?.text;
         if(text)return text;
-        errors.push(`${model}: respuesta vacía`);
-      }catch(e){if(e.message.includes("API Key")||e.message.includes("Sin permisos")||e.message.includes("error "))throw e;errors.push(`${model}: ${e.message}`)}
+        errors.push(`${label}: vacío`);
+      }catch(e){
+        if(e.message==="KEY_INVALID")throw new Error("KEY_INVALID");
+        if(e.message==="NO_PERMS")throw new Error("NO_PERMS");
+        errors.push(`${ep.model}: ${e.message.slice(0,40)}`)}
     }
     if(attempt<maxRetries-1){
-      const wait=15+attempt*15;/* 15s, 30s */
-      if(onStatus)onStatus(`⏳ Cuota excedida. Esperando ${wait}s antes de reintentar (${attempt+2}/${maxRetries})...`);
+      const wait=20+attempt*20;/* 20s, 40s */
+      if(onStatus)onStatus(`⏳ Rate limit. Esperando ${wait}s... (intento ${attempt+2}/${maxRetries})`);
       await new Promise(r=>setTimeout(r,wait*1000));
     }
   }
   throw new Error(`QUOTA|${errors.join("; ")}`);
 };
 
+const GROQ_MODELS=["llama-3.3-70b-versatile","llama-3.1-8b-instant"];
+const callGroq=async(prompt,apiKey,onStatus)=>{
+  const errors=[];
+  for(const model of GROQ_MODELS){
+    try{
+      if(onStatus)onStatus(`Groq: ${model}...`);
+      const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
+        body:JSON.stringify({model,messages:[{role:"user",content:prompt}],temperature:0.3,max_tokens:2048})});
+      if(res.status===401)throw new Error("KEY_INVALID");
+      if(res.status===429){errors.push(`${model}: 429`);continue}
+      if(!res.ok){errors.push(`${model}: ${res.status}`);continue}
+      const data=await res.json();
+      const text=data.choices?.[0]?.message?.content;
+      if(text)return text;
+      errors.push(`${model}: vacío`);
+    }catch(e){
+      if(e.message==="KEY_INVALID")throw new Error("KEY_INVALID");
+      errors.push(`${model}: ${e.message.slice(0,40)}`);
+    }
+  }
+  throw new Error(`QUOTA|${errors.join("; ")}`);
+};
+
+const callAI=async(prompt,provider,apiKey,onStatus)=>{
+  if(provider==="groq")return callGroq(prompt,apiKey,onStatus);
+  return callGemini(prompt,apiKey,onStatus);
+};
+
+/* CalorieNinjas API removed — now using local food database */
+
 const testGeminiKey=async(key,onProgress)=>{
   const results=[];
-  /* Solo probar 1 modelo para no gastar cuota */
-  const model=GEMINI_MODELS[0];
-  if(onProgress)onProgress(`Probando ${model}...`);
+  const ep=GEMINI_ENDPOINTS[0];
+  const label=`${ep.model} (${ep.ver})`;
+  if(onProgress)onProgress(`Probando ${label}...`);
   try{
-    const res=await fetch(geminiURL(model,key),{method:"POST",headers:{"Content-Type":"application/json"},
+    const res=await fetch(geminiURL(ep.model,ep.ver,key),{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({contents:[{parts:[{text:"Responde solo: OK"}]}],generationConfig:{maxOutputTokens:10}})});
-    if(res.ok){results.push(`✅ ${model}: OK — Tu key funciona`);return{ok:true,results}}
-    const t=await res.text();const msg=t.slice(0,120);
+    if(res.ok){results.push(`✅ Funciona correctamente`);return{ok:true,results}}
+    const t=await res.text();
     if(res.status===429){
-      results.push(`⏳ ${model}: 429 — Cuota temporal excedida`);
-      results.push(`💡 Tu key es válida pero estás en rate limit.`);
-      results.push(`Espera 1-2 minutos sin hacer requests y vuelve a intentar.`);
+      results.push(`⏳ 429 — Rate limit activo`);
+      results.push(`Tu key parece válida pero excediste la cuota.`);
+      results.push(`Pasos: 1) Espera 2 min sin tocar nada`);
+      results.push(`2) Si sigue, ve a aistudio.google.com`);
+      results.push(`3) Genera una API key NUEVA`);
       return{ok:false,rateLimit:true,results};
     }
-    if(res.status===400)results.push(`❌ API Key inválida (400). Genera una nueva.`);
+    if(res.status===400){
+      if(t.includes("API_KEY_INVALID")){results.push(`❌ API Key inválida. Genera una nueva en aistudio.google.com/apikey`)}
+      else{results.push(`❌ Error 400: ${t.slice(0,100)}`)}
+    }
     else if(res.status===403)results.push(`❌ Sin permisos (403). Habilita Generative Language API.`);
-    else results.push(`❌ ${model}: ${res.status} - ${msg}`);
+    else results.push(`❌ ${label}: ${res.status} - ${t.slice(0,100)}`);
   }catch(e){results.push(`❌ Error de red: ${e.message.slice(0,80)}`)}
   return{ok:false,results};
+};
+
+const testGroqKey=async(key,onProgress)=>{
+  const results=[];
+  if(onProgress)onProgress("Probando Groq API...");
+  try{
+    const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
+      body:JSON.stringify({model:"llama-3.3-70b-versatile",messages:[{role:"user",content:"Responde solo: OK"}],max_tokens:10})});
+    if(res.ok){results.push("✅ Funciona correctamente");return{ok:true,results}}
+    if(res.status===401){results.push("❌ API Key inválida. Revisa tu key en console.groq.com")}
+    else if(res.status===429){results.push("⏳ Rate limit activo. Espera unos segundos.");return{ok:false,rateLimit:true,results}}
+    else{const t=await res.text();results.push(`❌ Error ${res.status}: ${t.slice(0,100)}`)}
+  }catch(e){results.push(`❌ Error de red: ${e.message.slice(0,80)}`)}
+  return{ok:false,results};
+};
+
+const testAIKey=async(provider,key,onProgress)=>{
+  if(provider==="groq")return testGroqKey(key,onProgress);
+  return testGeminiKey(key,onProgress);
 };
 
 const AIAssistant=()=>{
@@ -854,64 +1317,304 @@ const[loading,setLoading]=useState(false);
 const[loadStatus,setLoadStatus]=useState("");
 const[msgs,setMsgs]=useState([]);
 const[parsedFood,setParsedFood]=useState(null);
-const[keyInput,setKeyInput]=useState(S.geminiApiKey||"");
-const[showKey,setShowKey]=useState(!S.geminiApiKey);
+const[foodDate,setFoodDate]=useState(todayS());
+const provider=S.aiProvider||"gemini";
+const curKey=provider==="groq"?(S.groqApiKey||""):(S.geminiApiKey||"");
+const[keyInput,setKeyInput]=useState(curKey);
+const[showKey,setShowKey]=useState(!curKey);
 const[lastAction,setLastAction]=useState(null);/* {type:"food"|"chat",input:string} for retry */
 const[testResult,setTestResult]=useState(null);/* null | "testing" | {ok,results} */
 const chatRef=useRef(null);
 
-const saveKey=(k)=>{sv({...D,settings:{...S,geminiApiKey:k}});setShowKey(false)};
-const apiKey=S.geminiApiKey||"";
+const setProvider=(p)=>{sv({...D,settings:{...S,aiProvider:p}});setKeyInput(p==="groq"?(S.groqApiKey||""):(S.geminiApiKey||""));setTestResult(null)};
+const saveKey=(k)=>{const key=provider==="groq"?"groqApiKey":"geminiApiKey";sv({...D,settings:{...S,[key]:k}});setShowKey(false)};
+const apiKey=curKey;
 
 const buildContext=()=>{
   const last7=fl.slice(-7);
   const gp=activeGP;
   const customPrompt=S.aiPrompt?`\n\nINSTRUCCIONES PERSONALIZADAS DEL USUARIO:\n${S.aiPrompt}`:"";
   const habitsCtx=habits.filter(h=>h.active).map(h=>`${h.emoji} ${h.name} (${h.meta})`).join(", ");
-  const projCtx=projects.map(p=>`${p.name}: ${p.progress}% ${p.status}`).join(", ");
-  return`CONTEXTO DEL USUARIO:
+
+  /* Projects with tasks detail */
+  const projCtx=projects.map(p=>{
+    const tasksDone=p.tasks?p.tasks.filter(t=>t.s==="done").length:0;
+    const tasksTotal=p.tasks?p.tasks.length:0;
+    const pendingTasks=p.tasks?p.tasks.filter(t=>t.s!=="done").map(t=>`  - ${t.t} (${t.s==="progress"?"en progreso":"pendiente"})`).join("\n"):"";
+    return`  * ${p.name}: ${p.progress}% | ${p.status} | Prioridad: ${p.priority} | Categoría: ${p.category}${p.deadline?" | Deadline: "+p.deadline:""}\n    Tareas: ${tasksDone}/${tasksTotal} completadas${pendingTasks?"\n"+pendingTasks:""}${p.notes?"\n    Notas: "+p.notes:""}`;
+  }).join("\n");
+
+  /* Books detail */
+  const booksCtx=books.map(b=>{
+    const status=b.status==="reading"?"Leyendo":b.status==="done"?"Terminado":"En cola";
+    return`  * "${b.title}" (${b.author}) — ${status}${b.progress>0?", "+b.progress+"%":""}${b.rating?" ★"+b.rating:""}${b.genre?" ["+b.genre+"]":""}`;
+  }).join("\n");
+
+  /* Habits with weekly tracking */
+  const habitsDetail=habits.filter(h=>h.active).map(h=>{
+    const wk=getWk();
+    const done=wk.filter(d=>(D.habitWeekly||{})[`${h.id}_${d}`]).length;
+    return`  * ${h.emoji} ${h.name}: ${h.meta} — ${done}/7 esta semana`;
+  }).join("\n");
+
+  /* Journal recent entries */
+  const journalCtx=Object.entries(D.journal||{}).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3).map(([date,entry])=>`  * ${date}: ${(entry.text||entry).substring(0,100)}...`).join("\n");
+
+  /* Schedule summary */
+  const schedCtx=(D.horario||[]).filter(h=>h.slots&&h.slots.some(s=>s)).map(h=>`  ${h.hour}: ${h.slots.filter(s=>s).join(", ")}`).join("\n");
+
+  /* Today's tasks */
+  const todayCtx=(D.todayTasks||[]).map(t=>`  * [${t.done?"✓":"○"}] ${t.task} (${t.cat})`).join("\n");
+
+  /* Compliance stats */
+  const compDays=last7.filter(e=>chkComp(e).day).length;
+
+  return`=== DATOS COMPLETOS DEL LIFE DASHBOARD ===
+
+📊 FITNESS Y NUTRICIÓN:
 - Plan: ${S.planName} | Meta: ${S.planGoal}
-- Peso actual: ${curW}kg (inicio: ${S.startWeight}kg, meta: ${S.goalWeight}kg)
-- Cintura actual: ${curWaist}cm (inicio: ${S.startWaist}cm)
-- Semana completada: ${completedWeek}/${S.cutWeeks} | Día ${Math.min(dayN,totalDays)}/${totalDays}
-- Perfil activo: ${gp.name} → Cal:${gp.cal} Prot:${gp.prot}g Grasa:${gp.fat}g Carbos:${gp.carbs}g Azúcar:≤${gp.sugar}g Entrenos:${gp.trainingPerWeek}x/sem
-- Hábitos activos: ${habitsCtx}
-- Proyectos: ${projCtx}
-- Últimos 7 registros: ${last7.map(e=>`${e.date}:${e.cal}cal,${e.prot}P,${e.fat}G,${e.carbs}C,${e.sugar}S,${e.weight}kg`).join(" | ")}
-- Promedio reciente: Cal:${avg(last7.filter(e=>+e.cal>0),"cal")} Prot:${avg(last7.filter(e=>+e.prot>0),"prot")}g Grasa:${avg(last7.filter(e=>+e.fat>0),"fat")}g Carbos:${avg(last7.filter(e=>+e.carbs>0),"carbs")}g${customPrompt}`;
+- Peso: ${curW}kg (inicio: ${S.startWeight}kg → meta: ${S.goalWeight}kg) | Perdido: ${wLost}kg
+- Cintura: ${curWaist}cm (inicio: ${S.startWaist}cm)
+- Semana: ${completedWeek}/${S.cutWeeks} | Día ${Math.min(dayN,totalDays)}/${totalDays} | Progreso: ${prog}%
+- Perfil nutricional: ${gp.name} → Cal:${gp.cal} | Prot:${gp.prot}g | Grasa:${gp.fat}g | Carbos:${gp.carbs}g | Azúcar:≤${gp.sugar}g | Fibra:${gp.fiber||25}g | Entrenos:${gp.trainingPerWeek}x/sem
+- Últimos 7 registros:
+${last7.map(e=>`  ${e.date}: ${e.cal}cal, ${e.prot}P, ${e.fat}G, ${e.carbs}C, ${e.sugar}S, ${e.fiber||0}F, ${e.weight}kg, ${e.steps||0} pasos`).join("\n")}
+- Promedio últimos 7: Cal:${avg(last7.filter(e=>+e.cal>0),"cal")} | Prot:${avg(last7.filter(e=>+e.prot>0),"prot")}g | Grasa:${avg(last7.filter(e=>+e.fat>0),"fat")}g | Carbos:${avg(last7.filter(e=>+e.carbs>0),"carbs")}g | Fibra:${avg(last7.filter(e=>+e.fiber>0),"fiber")}g
+- Compliance últimos 7 días: ${compDays}/7 días cumplidos
+
+📂 PROYECTOS:
+${projCtx||"  Sin proyectos"}
+
+📚 LECTURA:
+${booksCtx||"  Sin libros"}
+
+🎯 HÁBITOS (esta semana):
+${habitsDetail||"  Sin hábitos activos"}
+
+📅 TAREAS DE HOY:
+${todayCtx||"  Sin tareas"}
+
+${journalCtx?`📝 JOURNAL RECIENTE:\n${journalCtx}\n`:""}${schedCtx?`🕐 HORARIO SEMANAL:\n${schedCtx}\n`:""}${customPrompt}`;
+};
+
+/* ========== NEW FOOD ANALYSIS SYSTEM: Local DB + AI identification (no hallucinations) ========== */
+
+/* Try to parse "agregar" command: agregar [food] [amount]g [cal]cal [prot]P [fat]G [carbs]C */
+const parseAddFoodCmd=(text)=>{
+  const m=text.match(/^agregar\s+(.+?)\s+(\d+)\s*g\s+(\d+(?:\.\d+)?)\s*(?:cal|kcal)\s+(\d+(?:\.\d+)?)\s*P\s+(\d+(?:\.\d+)?)\s*G\s+(\d+(?:\.\d+)?)\s*C(?:\s+(\d+(?:\.\d+)?)\s*S)?(?:\s+(\d+(?:\.\d+)?)\s*F)?/i);
+  if(!m)return null;
+  return{alimento:m[1].trim(),estado:"Natural",kcal:+m[3],proteina_g:+m[4],grasas_g:+m[5],grasas_saturadas_g:0,carbs_g:+m[6],azucar_g:+(m[7]||0),fibra_g:+(m[8]||0),sodio_mg:0,colesterol_mg:0};
 };
 
 const analyzeFood=async(retryInput)=>{
   const foodText=retryInput||input.trim();
-  if(!foodText||!apiKey)return;
+  if(!foodText)return;
   setLoading(true);setParsedFood(null);setLoadStatus("");
   setLastAction({type:"food",input:foodText});
   if(!retryInput)setMsgs(prev=>[...prev,{role:"user",text:foodText}]);
+  const r1=v=>Math.round((+v||0)*10)/10;
+
   try{
-    const prompt=`Eres un nutricionista experto. El usuario te dice qué comió. Analiza la comida y estima los macronutrientes TOTALES del día o de la comida descrita.
+    /* ===== COMMAND: agregar alimento ===== */
+    const addCmd=parseAddFoodCmd(foodText);
+    if(addCmd){
+      const newFoods=[...personalFoods,addCmd];
+      sv({...D,personalFoods:newFoods});
+      setMsgs(prev=>[...prev,{role:"ai",text:`✅ Alimento agregado a tu base de datos personal:\n\n📦 ${addCmd.alimento} (${addCmd.estado})\nPor 100g: ${addCmd.kcal}cal | ${addCmd.proteina_g}g P | ${addCmd.grasas_g}g G | ${addCmd.carbs_g}g C | ${addCmd.azucar_g}g S | ${addCmd.fibra_g}g F`}]);
+      setLoading(false);setInput("");setLoadStatus("");return;
+    }
 
-IMPORTANTE: Responde SIEMPRE en este formato JSON exacto (solo el JSON, sin texto extra):
-{"cal":number,"prot":number,"fat":number,"carbs":number,"sugar":number,"detail":"descripción breve de cada alimento y sus macros estimados"}
+    /* ===== COMMAND: eliminar alimento ===== */
+    if(foodText.match(/^eliminar\s+/i)){
+      const name=foodText.replace(/^eliminar\s+/i,"").trim();
+      const idx=personalFoods.findIndex(f=>normFood(f.alimento).includes(normFood(name)));
+      if(idx>=0){
+        const removed=personalFoods[idx];
+        const newFoods=[...personalFoods];newFoods.splice(idx,1);
+        sv({...D,personalFoods:newFoods});
+        setMsgs(prev=>[...prev,{role:"ai",text:`🗑️ Eliminado "${removed.alimento}" de tu base de datos personal.`}]);
+      }else{
+        setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No encontré "${name}" en tu base de datos personal.`}]);
+      }
+      setLoading(false);setInput("");setLoadStatus("");return;
+    }
 
-Si el usuario describe varias comidas o todo lo del día, suma todo.
-Sé preciso con las porciones. Si no menciona cantidad, asume porciones normales.
+    /* ===== COMMAND: mis alimentos / ver db ===== */
+    if(foodText.match(/^(mis alimentos|ver db|mi db|lista alimentos)/i)){
+      const total=personalFoods.length;
+      const ref=FOOD_DB.length;
+      let txt=`📦 Tu base de datos de alimentos:\n\n`;
+      txt+=`🔵 Referencia built-in: ${ref} alimentos\n`;
+      txt+=`🟢 Tus alimentos personales: ${total}\n\n`;
+      if(total>0){
+        txt+=`--- Personales ---\n`;
+        personalFoods.forEach(f=>{txt+=`• ${f.alimento} (${f.estado}): ${f.kcal}cal ${f.proteina_g}P ${f.grasas_g}G ${f.carbs_g}C ${f.azucar_g}S ${f.fibra_g}F\n`});
+      }
+      txt+=`\n💡 Para agregar: "agregar [nombre] [100]g [cal]cal [P]P [G]G [C]C [S]S [F]F"`;
+      txt+=`\n💡 Para eliminar: "eliminar [nombre]"`;
+      setMsgs(prev=>[...prev,{role:"ai",text:txt}]);
+      setLoading(false);setInput("");setLoadStatus("");return;
+    }
 
-${buildContext()}
+    /* ===== MAIN FLOW: AI identifies food + grams → DB lookup → calculate ===== */
+    if(!apiKey){
+      setMsgs(prev=>[...prev,{role:"ai",text:`🔑 Configura tu API Key de ${provider==="groq"?"Groq":"Gemini"} para analizar comidas.`}]);
+      setLoading(false);setInput("");setLoadStatus("");return;
+    }
 
-COMIDA: ${foodText}`;
-    const resp=await callGemini(prompt,apiKey,s=>setLoadStatus(s));
+    /* Build available foods list for AI */
+    const allFoodsForAI=[...personalFoods.map(f=>`${f.alimento} (${f.estado})`),...FOOD_DB.map(f=>`${f.alimento} (${f.estado})`)];
+    const uniqueFoods=[...new Set(allFoodsForAI)];
+
+    setLoadStatus("🤖 Identificando alimentos...");
+    const parsePrompt=`Eres un parser de comida. Tu ÚNICA tarea es identificar qué alimentos hay y cuántos gramos de cada uno.
+NO inventes macros ni calorías — solo parsea y mapea contra la lista.
+
+ALIMENTOS DISPONIBLES EN LA DB:
+${uniqueFoods.join(", ")}
+
+REGLAS DE MATCH:
+1. Match EXACTO o sinónimo OBVIO del mismo alimento → found:true, "name" = nombre EXACTO de la lista
+   Ej: "pollo" → "Pechuga pollo" OK | "whey" → "Proteina Whey" OK
+2. PROHIBIDO match si cambia el alimento real:
+   - Diferente marca/sabor (yogurt alquería ≠ yogurt griego casero) → found:false
+   - Diferente parte (clara de huevo ≠ huevo entero ≠ yema huevo) → found:false
+   - Diferente tipo (integral vs blanco, light vs regular) → found:false
+3. Si un alimento NO está en la lista → found:false obligatorio. NO fuerces un match
+4. Productos comerciales que no están en la lista → found:false
+
+GRAMOS Y PORCIONES:
+- Si el usuario da gramos/ml → úsalos tal cual
+- Si da unidades, convierte a gramos:
+  1 huevo entero=50g | 1 clara=33g | 1 yema=17g | 1 huevo frito=50g | 1 huevo revuelto=50g
+  1 arepa=100g | 1 tajada pan=30g | 1 porción carne/pollo/pescado=150g
+  1 porción arroz/pasta=200g | 1 cucharada aceite/mantequilla=14g | 1 cucharada miel=21g
+  1 fruta mediana=180g | 1 banano=120g | 1 vaso leche=240g | 1 scoop whey=30g
+
+ESTADO:
+Usa el estado que aparece en la DB para ese alimento.
+Si no se especifica: carnes/granos=Cocido, frutas=Natural, suplementos=Polvo
+
+IMPORTANTE: "clara" = "Clara de huevo" (solo la clara, SIN yema). "huevo" o "huevo entero" = "Huevo entero" (entero con yema). SON ALIMENTOS DIFERENTES con macros MUY distintos. NUNCA confundirlos.
+
+EJEMPLOS:
+"200g arroz con 150g pechuga" →
+{"items":[{"name":"Arroz blanco","grams":200,"estado":"Cocido","found":true},{"name":"Pechuga pollo","grams":150,"estado":"Cocida","found":true}]}
+
+"5 huevos (2 enteros y 3 claras)" →
+{"items":[{"name":"Huevo entero","grams":100,"estado":"Natural","found":true},{"name":"Clara de huevo","grams":99,"estado":"Natural","found":true}]}
+
+"3 claras y 1 huevo con arepa" →
+{"items":[{"name":"Clara de huevo","grams":99,"estado":"Natural","found":true},{"name":"Huevo entero","grams":50,"estado":"Natural","found":true},{"name":"Arepa blanca","grams":100,"estado":"Natural","found":true}]}
+
+"yogurt alquería con granola fitness" →
+{"items":[{"name":"yogurt alquería","grams":200,"estado":"Natural","found":false},{"name":"granola fitness","grams":60,"estado":"Natural","found":false}]}
+
+"almorcé bien" →
+{"items":[],"note":"No pude identificar alimentos específicos"}
+
+Comida: "${foodText}"
+
+Responde SOLO JSON puro (sin markdown, sin backticks, sin texto extra):
+{"items":[{"name":"nombre exacto de la lista","grams":number,"estado":"string","found":boolean}]}`;
+
+    const resp=await callAI(parsePrompt,provider,apiKey,s=>setLoadStatus(s));
     const jsonMatch=resp.match(/\{[\s\S]*\}/);
-    if(jsonMatch){
-      const parsed=JSON.parse(jsonMatch[0]);
-      setParsedFood({cal:Math.round(+parsed.cal||0),prot:Math.round(+parsed.prot||0),fat:Math.round(+parsed.fat||0),carbs:Math.round(+parsed.carbs||0),sugar:Math.round(+parsed.sugar||0),detail:parsed.detail||""});
-      setMsgs(prev=>[...prev,{role:"ai",text:`🍽️ Análisis:\n${parsed.detail}\n\n📊 Totales: ${parsed.cal} kcal | ${parsed.prot}g P | ${parsed.fat}g G | ${parsed.carbs}g C | ${parsed.sugar}g S`}]);
-    } else {
-      setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
+    if(!jsonMatch){
+      setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ Error al interpretar. Intenta con algo más claro, ej: "200g arroz con 150g pollo"`}]);
+      setLoading(false);setInput("");setLoadStatus("");return;
+    }
+
+    const parsed=JSON.parse(jsonMatch[0]);
+    let items=parsed.items||[];
+    if(!Array.isArray(items))items=[];
+
+    /* Post-process: fix known AI confusion between egg variants.
+       Llama3/Groq often maps "claras" → "Huevo entero" incorrectly.
+       Use gram-distance heuristic: 1 clara=33g, 1 entero=50g, 1 yema=17g */
+    const _ft=normFood(foodText);
+    if(/\bclara[s]?\b/.test(_ft)&&!items.some(it=>normFood(it.name).includes("clara"))){
+      items=items.map(it=>{
+        if(!normFood(it.name).includes("huevo"))return it;
+        const g=+(it.grams)||100;
+        const dC=Math.abs(g-Math.round(g/33)*33);
+        const dE=Math.abs(g-Math.round(g/50)*50);
+        if(dC<dE)return{...it,name:"Clara de huevo",estado:"Natural"};
+        return it;
+      });
+    }
+    if(/\byema[s]?\b/.test(_ft)&&!items.some(it=>normFood(it.name).includes("yema"))){
+      items=items.map(it=>{
+        if(!normFood(it.name).includes("huevo"))return it;
+        const g=+(it.grams)||100;
+        const dY=Math.abs(g-Math.round(g/17)*17);
+        const dE=Math.abs(g-Math.round(g/50)*50);
+        if(dY<dE)return{...it,name:"Yema huevo",estado:"Natural"};
+        return it;
+      });
+    }
+
+    setLoadStatus("📊 Buscando en base de datos...");
+
+    const food={cal:0,prot:0,fat:0,carbs:0,sugar:0,fiber:0,detail:""};
+    const lines=[];
+    const notFound=[];
+
+    items.forEach(it=>{
+      const grams=+(it.grams)||100;
+
+      /* If AI explicitly says found:false, skip DB search — go straight to notFound */
+      if(it.found===false){
+        notFound.push(it.name+(it.grams?` ${it.grams}g`:""));
+        return;
+      }
+
+      const result=searchFoodMatch(it.name, personalFoods);
+
+      if(result){
+        const entry=result.match;
+        const factor=grams/100;
+        const c=r1(entry.kcal*factor);
+        const p=r1(entry.proteina_g*factor);
+        const f=r1(entry.grasas_g*factor);
+        const cb=r1(entry.carbs_g*factor);
+        const s=r1(entry.azucar_g*factor);
+        const fb=r1(entry.fibra_g*factor);
+        food.cal+=c;food.prot+=p;food.fat+=f;food.carbs+=cb;food.sugar+=s;food.fiber+=fb;
+        const srcTag=result.source==="personal"?"🟢":"🔵";
+        lines.push(`${srcTag} ${entry.alimento} (${entry.estado}) ${grams}g: ${c}cal, ${p}g P, ${f}g G, ${cb}g C, ${s}g S, ${fb}g F`);
+      }else{
+        notFound.push(it.name+(it.grams?` ${it.grams}g`:""));
+      }
+    });
+
+    food.cal=r1(food.cal);food.prot=r1(food.prot);food.fat=r1(food.fat);food.carbs=r1(food.carbs);food.sugar=r1(food.sugar);food.fiber=r1(food.fiber);
+    food.detail=lines.join("\n");
+
+    if(lines.length>0){
+      let msg=`🍽️ Desglose (datos exactos de tu DB):\n${lines.join("\n")}\n\n✅ Totales: ${food.cal} kcal | ${food.prot}g P | ${food.fat}g G | ${food.carbs}g C | ${food.sugar}g S | ${food.fiber}g F`;
+      msg+=`\n\n🔵 = tabla referencia | 🟢 = tu DB personal`;
+      if(notFound.length>0){
+        msg+=`\n\n⚠️ No encontré en la DB: ${notFound.join(", ")}\n💡 Para agregar: "agregar [nombre] 100g [cal]cal [P]P [G]G [C]C"`;
+      }
+      setParsedFood(food);
+      setMsgs(prev=>[...prev,{role:"ai",text:msg}]);
+    }else if(notFound.length>0){
+      setParsedFood(null);
+      setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No encontré estos alimentos en la base de datos:\n${notFound.map(n=>`• ${n}`).join("\n")}\n\n💡 Puedes agregarlos con:\n"agregar [nombre] 100g [cal]cal [P]P [G]G [C]C [S]S [F]F"\n\nO usa el tab 📦 Alimentos para gestionar tu DB.`}]);
+    }else{
+      setParsedFood(null);
+      setMsgs(prev=>[...prev,{role:"ai",text:`⚠️ No pude identificar alimentos en "${foodText}". Intenta con algo como: "200g arroz con 150g pollo"`}]);
     }
   }catch(e){
-    if(e.message.startsWith("QUOTA|")){
-      const detail=e.message.slice(6);
-      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Todos los modelos fallaron:\n${detail}\n\nPresiona 🔄 para reintentar o verifica tu API key con el botón 🧪 Test.`,retry:true}]);
+    if(e.message&&e.message.startsWith("QUOTA|")){
+      const isGroq=provider==="groq";
+      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`⏳ Rate limit de Groq\n\nEspera unos segundos y presiona 🔄`:`⏳ Rate limit de Google (429)\n\nEspera 2-3 min y presiona 🔄\nO cambia a Groq`,retry:true}]);
+    }else if(e.message==="KEY_INVALID"){
+      const isGroq=provider==="groq";
+      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`❌ API Key de Groq inválida\n\nRevisa en console.groq.com`:`❌ API Key inválida\n\nGenera una nueva en aistudio.google.com/apikey`}]);
+    }else if(e.message==="NO_PERMS"){
+      setMsgs(prev=>[...prev,{role:"ai",text:`❌ Sin permisos (403)\n\nHabilita "Generative Language API" en Google Cloud.\nO cambia a Groq.`}]);
     }else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
   }
   setLoading(false);setInput("");setLoadStatus("");
@@ -919,14 +1622,20 @@ COMIDA: ${foodText}`;
 
 const addFoodToLog=()=>{
   if(!parsedFood)return;
-  const entry={date:todayS(),week:`S${currentWeek}`,dayType:"dt2",weight:"",waist:"",cal:parsedFood.cal,prot:parsedFood.prot,fat:parsedFood.fat,carbs:parsedFood.carbs,sugar:parsedFood.sugar,steps:"",sleep:"",notes:"AI: "+input};
-  const existing=fl.findIndex(e=>e.date===todayS());
+  const targetDate=foodDate||todayS();
+  const targetDateObj=new Date(targetDate+"T00:00:00");
+  const startDateObj=new Date(S.startDate+"T00:00:00");
+  const weekNum=Math.min(Math.ceil((Math.floor((targetDateObj-startDateObj)/86400000)+1)/7),S.cutWeeks);
+  const entry={date:targetDate,week:`S${weekNum}`,dayType:"dt2",weight:"",waist:"",cal:parsedFood.cal,prot:parsedFood.prot,fat:parsedFood.fat,carbs:parsedFood.carbs,sugar:parsedFood.sugar,fiber:parsedFood.fiber,steps:"",sleep:"",notes:"DB: "+(parsedFood.detail||"comida")};
+  const existing=fl.findIndex(e=>e.date===targetDate);
   const log=[...fl];
+  const isToday=targetDate===todayS();
+  const dateLabel=isToday?"hoy":targetDate;
   if(existing>=0){
-    log[existing]={...log[existing],cal:(+log[existing].cal||0)+parsedFood.cal,prot:(+log[existing].prot||0)+parsedFood.prot,fat:(+log[existing].fat||0)+parsedFood.fat,carbs:(+log[existing].carbs||0)+parsedFood.carbs,sugar:(+log[existing].sugar||0)+parsedFood.sugar,notes:log[existing].notes?(log[existing].notes+"; AI: "+parsedFood.detail):("AI: "+parsedFood.detail)};
+    log[existing]={...log[existing],cal:(+log[existing].cal||0)+parsedFood.cal,prot:(+log[existing].prot||0)+parsedFood.prot,fat:(+log[existing].fat||0)+parsedFood.fat,carbs:(+log[existing].carbs||0)+parsedFood.carbs,sugar:(+log[existing].sugar||0)+parsedFood.sugar,fiber:(+log[existing].fiber||0)+parsedFood.fiber,notes:log[existing].notes?(log[existing].notes+"; AI: "+parsedFood.detail):("AI: "+parsedFood.detail)};
   } else { log.push(entry);log.sort((a,b)=>a.date.localeCompare(b.date)); }
   sv({...D,fitnessLog:log});
-  setMsgs(prev=>[...prev,{role:"ai",text:"✅ Registrado en fitness log"+(existing>=0?" (sumado al registro existente de hoy)":"")}]);
+  setMsgs(prev=>[...prev,{role:"ai",text:`✅ Registrado en fitness log (${dateLabel})`+(existing>=0?" — sumado al registro existente":"")}]);
   setParsedFood(null);
 };
 
@@ -937,21 +1646,49 @@ const askChat=async(retryInput)=>{
   setLastAction({type:"chat",input:userMsg});
   if(!retryInput){setInput("");setMsgs(prev=>[...prev,{role:"user",text:userMsg}])}
   try{
-    const history=msgs.slice(-6).map(m=>`${m.role==="user"?"USUARIO":"ASISTENTE"}: ${m.text}`).join("\n");
-    const prompt=`Eres un coach de fitness y nutrición experto. Responde en español, de forma concisa y útil. Usa emojis moderadamente.
+    const history=msgs.slice(-8).map(m=>`${m.role==="user"?"USUARIO":"ASISTENTE"}: ${m.text}`).join("\n");
+    const prompt=`Eres el asistente inteligente del Life Dashboard, un sistema integral de productividad y fitness. Tu nombre es "Coach". Eres experto en:
+- Nutrición deportiva y planes de alimentación
+- Entrenamiento de fuerza y acondicionamiento
+- Gestión de proyectos y productividad
+- Hábitos y desarrollo personal
+- Lectura y aprendizaje
+
+PERSONALIDAD:
+- Habla en español, de forma natural y directa como un amigo que sabe mucho
+- Sé específico y usa los DATOS REALES del usuario (no genéricos)
+- Cuando analices datos, menciona números concretos
+- Da recomendaciones accionables y prácticas
+- Usa emojis con moderación para dar estructura visual
+- Responde de forma concisa pero completa. No rellenes con texto genérico
+- Si el usuario pregunta sobre algo del dashboard, CONSULTA los datos y responde con información real
+
+CAPACIDADES - Puedes responder sobre CUALQUIER sección del dashboard:
+1. FITNESS: progreso de peso/cintura, análisis de macros, compliance, tendencias, recomendaciones nutricionales
+2. PROYECTOS: estado actual, tareas pendientes, prioridades, deadlines, recomendaciones de gestión
+3. HÁBITOS: seguimiento semanal, consistencia, sugerencias para mejorar adherencia
+4. LECTURA: libros en progreso, recomendaciones, conexiones entre lecturas y objetivos
+5. HORARIO: optimización de rutina, distribución del tiempo
+6. TAREAS: priorización del día, gestión de pendientes
+7. GENERAL: cualquier pregunta de fitness, nutrición, productividad o desarrollo personal
 
 ${buildContext()}
 
-${history?`HISTORIAL:\n${history}\n`:""}
+${history?`CONVERSACIÓN PREVIA:\n${history}\n`:""}
 USUARIO: ${userMsg}
 
-Responde de forma directa y personalizada basándote en los datos del usuario.`;
-    const resp=await callGemini(prompt,apiKey,s=>setLoadStatus(s));
+Responde basándote en los datos REALES del usuario. Si pregunta sobre su progreso, usa los números. Si pide consejos, personalízalos a su situación. Si pregunta sobre proyectos/hábitos/libros, consulta los datos del contexto.`;
+    const resp=await callAI(prompt,provider,apiKey,s=>setLoadStatus(s));
     setMsgs(prev=>[...prev,{role:"ai",text:resp}]);
   }catch(e){
     if(e.message.startsWith("QUOTA|")){
-      const detail=e.message.slice(6);
-      setMsgs(prev=>[...prev,{role:"ai",text:`⏳ Todos los modelos fallaron:\n${detail}\n\nPresiona 🔄 para reintentar o verifica tu API key con el botón 🧪 Test.`,retry:true}]);
+      const isGroq=provider==="groq";
+      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`⏳ Rate limit de Groq. Espera unos segundos y presiona 🔄`:`⏳ Rate limit de Google (429)\n\nEspera 2-3 min y presiona 🔄\nO cambia a Groq (sin restricciones regionales)`,retry:true}]);
+    }else if(e.message==="KEY_INVALID"){
+      const isGroq=provider==="groq";
+      setMsgs(prev=>[...prev,{role:"ai",text:isGroq?`❌ API Key de Groq inválida. Revisa en console.groq.com`:`❌ API Key inválida. Genera una nueva en aistudio.google.com/apikey`}]);
+    }else if(e.message==="NO_PERMS"){
+      setMsgs(prev=>[...prev,{role:"ai",text:`❌ Sin permisos. Habilita "Generative Language API" en Google Cloud.\nO cambia a Groq.`}]);
     }else setMsgs(prev=>[...prev,{role:"ai",text:"❌ "+e.message}]);
   }
   setLoading(false);setLoadStatus("");
@@ -969,7 +1706,7 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 <span style={{fontSize:"1.2rem"}}>🤖</span>
 <div style={{flex:1}}>
 <div style={{fontSize:"0.82rem",fontWeight:700}}>AI Coach</div>
-<div style={{fontSize:"0.55rem",color:C.t3}}>Gemini (15 req/min gratis) · {mode==="food"?"Analizar comida":"Consulta libre"}</div>
+<div style={{fontSize:"0.55rem",color:C.t3}}>{provider==="groq"?"Groq / Llama 3 (gratis)":"Gemini (15 req/min)"} · {mode==="food"?"🍽️ Comida (DB local)":mode==="foods"?"📦 Gestión alimentos":"💬 Consulta libre"}</div>
 </div>
 <button onClick={()=>setShowKey(!showKey)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"0.7rem"}}>🔑</button>
 <button onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:"1rem"}}>✕</button>
@@ -977,11 +1714,17 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 
 {/* API Key config */}
 {showKey&&<div style={{padding:"10px 14px",background:C.bg2,borderBottom:`1px solid ${C.b1}`}}>
-<div style={{fontSize:"0.65rem",color:C.t2,marginBottom:6}}>API Key de Google Gemini (<a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>obtener gratis aquí</a>)</div>
+<div style={{display:"flex",gap:4,marginBottom:8}}>
+{[["gemini","Gemini"],["groq","Groq (Recomendado)"]].map(([p,l])=>(
+<button key={p} onClick={()=>setProvider(p)} style={{flex:1,padding:"5px 8px",borderRadius:8,border:`1px solid ${provider===p?C.purple:C.b1}`,background:provider===p?C.purple+"25":"transparent",color:provider===p?C.t0:C.t3,fontSize:"0.62rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+))}
+</div>
+{provider==="groq"?<div style={{fontSize:"0.65rem",color:C.t2,marginBottom:6}}>API Key de Groq (<a href="https://console.groq.com/keys" target="_blank" style={{color:C.cyan}}>obtener gratis aquí</a>) — Sin restricciones regionales</div>
+:<div style={{fontSize:"0.65rem",color:C.t2,marginBottom:6}}>API Key de Google Gemini (<a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>obtener gratis aquí</a>)</div>}
 <div style={{display:"flex",gap:6}}>
-<input style={{...z.inpM,fontSize:"0.7rem",flex:1}} type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)} placeholder="AIzaSy..."/>
+<input style={{...z.inpM,fontSize:"0.7rem",flex:1}} type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)} placeholder={provider==="groq"?"gsk_...":"AIzaSy..."}/>
 <button style={z.btnS(true)} onClick={()=>saveKey(keyInput)}>✓</button>
-<button style={{...z.btnS(false),fontSize:"0.6rem",whiteSpace:"nowrap"}} onClick={async()=>{setTestResult("testing");const r=await testGeminiKey(keyInput||apiKey,s=>setTestResult(s));setTestResult(r)}}>🧪 Test</button>
+<button style={{...z.btnS(false),fontSize:"0.6rem",whiteSpace:"nowrap"}} onClick={async()=>{setTestResult("testing");const r=await testAIKey(provider,keyInput||apiKey,s=>setTestResult(s));setTestResult(r)}}>🧪 Test</button>
 </div>
 {testResult==="testing"||typeof testResult==="string"&&testResult!=="testing"?<div style={{fontSize:"0.6rem",color:C.cyan,marginTop:6}}>{typeof testResult==="string"?testResult:"Probando..."}</div>:null}
 {testResult&&typeof testResult==="object"&&<div style={{fontSize:"0.6rem",marginTop:6,padding:8,background:C.bg3,borderRadius:6}}>
@@ -991,26 +1734,55 @@ return(<div style={{position:"fixed",bottom:20,right:20,width:380,maxWidth:"calc
 
 {/* Mode tabs */}
 <div style={{display:"flex",borderBottom:`1px solid ${C.b1}`}}>
-{[["food","🍽️ Comida"],["chat","💬 Consultar"],["prompt","📝 Mi Contexto"]].map(([m,l])=>(
-<button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"8px",background:mode===m?C.bg3:"transparent",border:"none",borderBottom:mode===m?`2px solid ${C.purple}`:"2px solid transparent",color:mode===m?C.t0:C.t3,fontSize:"0.68rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+{[["food","🍽️ Comida"],["foods","📦 Alimentos"],["chat","💬 Consultar"],["prompt","📝 Mi Contexto"]].map(([m,l])=>(
+<button key={m} onClick={()=>{setMode(m);setParsedFood(null)}} style={{flex:1,padding:"8px",background:mode===m?C.bg3:"transparent",border:"none",borderBottom:mode===m?`2px solid ${C.purple}`:"2px solid transparent",color:mode===m?C.t0:C.t3,fontSize:"0.62rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
 ))}
 </div>
 
+{/* Food DB manager */}
+{mode==="foods"?<FoodDBManager personalFoods={personalFoods} onSave={(foods)=>sv({...D,personalFoods:foods})}/>:null}
 {/* Prompt editor */}
 {mode==="prompt"?<div style={{flex:1,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
 <div style={{fontSize:"0.75rem",color:C.t1,fontWeight:600}}>📝 Tu contexto personalizado</div>
-<div style={{fontSize:"0.68rem",color:C.t2,lineHeight:1.5}}>Escribe aquí todo lo que quieras que el AI Coach sepa sobre ti: tu plan, objetivo, restricciones alimentarias, preferencias, lesiones, estilo de entrenamiento, etc. Esto se incluirá en cada consulta automáticamente.</div>
+<div style={{fontSize:"0.68rem",color:C.t2,lineHeight:1.5}}>Escribe aquí todo lo que quieras que el AI Coach sepa sobre ti, o carga un archivo (.txt, .csv, .pdf). Esto se incluirá en cada consulta automáticamente.</div>
 <textarea style={{...z.inp,flex:1,minHeight:180,fontSize:"0.76rem",lineHeight:1.6,fontFamily:"'IBM Plex Mono',monospace",resize:"none"}} value={S.aiPrompt||""} onChange={e=>sv({...D,settings:{...S,aiPrompt:e.target.value}})}
 placeholder={"Ejemplo:\n- Tengo 24 años, hombre, 1.75m\n- Mi objetivo es bajar de 20% a 15% de grasa corporal en 6 semanas\n- Entreno pesas 5x/semana (PPL) y juego tenis/pádel 2x\n- No me gusta el brócoli ni las espinacas\n- Prefiero comer más carbos antes de entrenar\n- Tengo molestia en el hombro derecho\n- Quiero mantener la masa muscular mientras bajo grasa\n- Mi presupuesto de comida es moderado\n- Vivo en Colombia"}/>
+<div style={{display:"flex",gap:6,alignItems:"center"}}>
+<button style={{...z.btn(false),fontSize:"0.68rem",padding:"6px 12px"}} onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept=".txt,.csv,.pdf";inp.onchange=async(ev)=>{
+const file=ev.target.files[0];if(!file)return;
+const name=file.name.toLowerCase();
+try{
+let text="";
+if(name.endsWith(".pdf")){
+const buf=await file.arrayBuffer();const bytes=new Uint8Array(buf);
+let raw="";for(let i=0;i<bytes.length;i++)raw+=String.fromCharCode(bytes[i]);
+const texts=[];const streamRe=/stream\s*\n?([\s\S]*?)endstream/g;let m;
+while((m=streamRe.exec(raw))!==null){const s=m[1].replace(/\r/g,"");
+const lines=s.split("\n").filter(l=>/^\(.*\)\s*Tj/.test(l)||/\[(.*)\]\s*TJ/.test(l));
+for(const l of lines){const parens=[...l.matchAll(/\(([^)]*)\)/g)].map(x=>x[1]);if(parens.length)texts.push(parens.join(""))}}
+text=texts.join("\n").trim();
+if(!text){const fallback=raw.replace(/[^\x20-\x7E\n\rÀ-ÿ]/g," ").replace(/ {3,}/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
+const useful=fallback.split("\n").filter(l=>l.trim().length>3&&!/^(%|obj|endobj|stream|endstream|xref|trailer|startxref)/.test(l.trim()));
+text=useful.join("\n").slice(0,5000)}
+if(!text)text="(No se pudo extraer texto del PDF. Intenta copiar y pegar manualmente.)"
+}else{text=await file.text()}
+const current=S.aiPrompt||"";
+const separator=current?"\n\n--- Archivo: "+file.name+" ---\n":"";
+sv({...D,settings:{...S,aiPrompt:current+separator+text.slice(0,8000)}});
+}catch(e){alert("Error al leer archivo: "+e.message)}
+};inp.click()}}>📎 Cargar archivo</button>
+<span style={{fontSize:"0.55rem",color:C.t3}}>.txt, .csv, .pdf</span>
+{(S.aiPrompt||"").length>0&&<button style={{...z.btn(false),fontSize:"0.68rem",padding:"6px 12px",marginLeft:"auto"}} onClick={()=>{if(confirm("¿Borrar todo el contexto personalizado?"))sv({...D,settings:{...S,aiPrompt:""}})}}>🗑 Limpiar</button>}
+</div>
 <div style={{padding:"10px",background:C.bg3,borderRadius:8,border:`1px solid ${C.b1}`}}>
 <div style={{fontSize:"0.6rem",fontWeight:600,color:C.cyan,marginBottom:4}}>📊 Contexto automático (siempre incluido):</div>
 <pre style={{fontSize:"0.58rem",color:C.t3,whiteSpace:"pre-wrap",lineHeight:1.5,maxHeight:100,overflowY:"auto"}}>{buildContext().split("\nINSTRUCCIONES")[0]}</pre>
 </div>
 </div>:null}
 {/* Messages */}
-{mode!=="prompt"&&<div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
+{mode!=="prompt"&&mode!=="foods"&&<div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
 {msgs.length===0&&<div style={{textAlign:"center",padding:"30px 10px",color:C.t3,fontSize:"0.75rem"}}>
-{mode==="food"?"🍽️ Escribe lo que comiste y te calculo los macros automáticamente.\n\nEjemplo: \"200g de pollo a la plancha con arroz y ensalada\"":"💬 Pregúntame sobre tu progreso, qué comer, recomendaciones, etc."}
+{mode==="food"?`🍽️ Escribe lo que comiste y busco los macros exactos en tu base de datos.\n\nEjemplo: "200g pollo con arroz y ensalada"\n\n📦 Comandos especiales:\n• "agregar [nombre] 100g [cal]cal [P]P [G]G [C]C"\n• "eliminar [nombre]"\n• "mis alimentos"`:`💬 Pregúntame lo que quieras: fitness, nutrición, proyectos, hábitos, libros, horario, productividad...`}
 </div>}
 {msgs.map((m,i)=>(<div key={i} style={{alignSelf:m.role==="user"?"flex-end":"flex-start",maxWidth:"85%"}}>
 <div style={{padding:"8px 12px",borderRadius:m.role==="user"?"12px 12px 4px 12px":"12px 12px 12px 4px",background:m.role==="user"?C.purple+"25":m.retry?C.orange+"15":C.bg3,border:`1px solid ${m.role==="user"?C.purple+"40":m.retry?C.orange+"40":C.b1}`,fontSize:"0.76rem",color:C.t1,whiteSpace:"pre-wrap",lineHeight:1.5}}>
@@ -1021,21 +1793,25 @@ placeholder={"Ejemplo:\n- Tengo 24 años, hombre, 1.75m\n- Mi objetivo es bajar 
 {loading&&<div style={{alignSelf:"flex-start",padding:"8px 12px",borderRadius:12,background:C.bg3,fontSize:"0.76rem",color:C.t3,animation:"pulse 1s infinite"}}>{loadStatus||( mode==="food"?"🔍 Analizando comida...":"🤔 Pensando...")}</div>}
 {parsedFood&&<div style={{padding:"10px",background:C.green+"15",border:`1px solid ${C.green}30`,borderRadius:10}}>
 <div style={{fontSize:"0.68rem",fontWeight:600,color:C.green,marginBottom:6}}>📊 Macros detectados:</div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:4,marginBottom:8}}>
-{[["Cal",parsedFood.cal,C.orange],["Prot",parsedFood.prot+"g",C.blue],["Grasa",parsedFood.fat+"g",C.red],["Carbos",parsedFood.carbs+"g",C.green],["Azúcar",parsedFood.sugar+"g",C.pink]].map(([l,v,c])=>(
+<div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:4,marginBottom:8}}>
+{[["Cal",parsedFood.cal,C.orange],["Prot",parsedFood.prot+"g",C.blue],["Grasa",parsedFood.fat+"g",C.red],["Carbos",parsedFood.carbs+"g",C.green],["Azúcar",parsedFood.sugar+"g",C.pink],["Fibra",parsedFood.fiber+"g",C.amber]].map(([l,v,c])=>(
 <div key={l} style={{textAlign:"center"}}><div style={{fontSize:"0.5rem",color:c,fontWeight:600}}>{l}</div><div style={{fontFamily:"monospace",fontSize:"0.78rem",fontWeight:700}}>{v}</div></div>
 ))}
 </div>
-<button style={{...z.btn(true),width:"100%",padding:"6px"}} onClick={addFoodToLog}>✅ Agregar al registro de hoy</button>
+<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+<span style={{fontSize:"0.62rem",color:C.t2,fontWeight:600}}>📅 Fecha:</span>
+<input type="date" style={{...z.inpM,padding:"3px 6px",fontSize:"0.68rem",flex:1,colorScheme:"dark"}} value={foodDate} onChange={e=>setFoodDate(e.target.value)}/>
+</div>
+<button style={{...z.btn(true),width:"100%",padding:"6px"}} onClick={addFoodToLog}>✅ Agregar al registro {foodDate===todayS()?"de hoy":`del ${foodDate}`}</button>
 </div>}
 </div>}
 
 {/* Input */}
-{mode!=="prompt"&&<div style={{padding:"10px 14px",borderTop:`1px solid ${C.b1}`,background:C.bg2}}>
-{!apiKey?<div style={{fontSize:"0.7rem",color:C.orange,textAlign:"center",padding:6}}>🔑 Configura tu API Key de Gemini arriba para empezar</div>:
+{mode!=="prompt"&&mode!=="foods"&&<div style={{padding:"10px 14px",borderTop:`1px solid ${C.b1}`,background:C.bg2}}>
+{!apiKey&&mode==="food"?<div style={{fontSize:"0.7rem",color:C.orange,textAlign:"center",padding:6}}>🔑 Configura tu API Key de {provider==="groq"?"Groq":"Gemini"} arriba para empezar</div>:
 <div style={{display:"flex",gap:6}}>
 <input style={{...z.inp,flex:1,fontSize:"0.78rem",padding:"8px 12px"}} value={input} onChange={e=>setInput(e.target.value)}
-  placeholder={mode==="food"?"¿Qué comiste? Ej: pollo con arroz...":"Pregúntale al coach..."}
+  placeholder={mode==="food"?"¿Qué comiste? Ej: 150g pollo con arroz...":"Pregunta lo que quieras: fitness, proyectos, hábitos..."}
   onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();mode==="food"?analyzeFood():askChat()}}}
   disabled={loading}/>
 <button style={{...z.btn(true),padding:"8px 14px"}} onClick={mode==="food"?analyzeFood:askChat} disabled={loading||!input.trim()}>
@@ -1054,12 +1830,34 @@ return(<Mdl title="⚙ Configuración" onClose={onClose} ch={<div style={{displa
 <input style={{...z.inp,maxWidth:200}} value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})}/>}</div>))}
 <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>Fecha inicio</span><input style={{...z.inpM,maxWidth:155}} type="date" value={f.startDate} onChange={e=>setF({...f,startDate:e.target.value})}/></div>
 <div style={{borderTop:`1px solid ${C.b1}`,marginTop:10,paddingTop:10}}>
-<div style={{fontSize:"0.65rem",fontWeight:600,color:C.purple,marginBottom:6}}>🤖 AI Coach (Google Gemini)</div>
+<div style={{fontSize:"0.65rem",fontWeight:600,color:C.purple,marginBottom:6}}>🤖 AI Coach</div>
+<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+<span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>Proveedor</span>
+<div style={{display:"flex",gap:4}}>
+{[["gemini","Gemini"],["groq","Groq"]].map(([p,l])=>(
+<button key={p} onClick={()=>setF({...f,aiProvider:p})} style={{padding:"4px 12px",borderRadius:6,border:`1px solid ${(f.aiProvider||"gemini")===p?C.purple:C.b1}`,background:(f.aiProvider||"gemini")===p?C.purple+"25":"transparent",color:(f.aiProvider||"gemini")===p?C.t0:C.t3,fontSize:"0.7rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+))}
+</div>
+</div>
+{(f.aiProvider||"gemini")==="gemini"?<div>
 <div style={{display:"flex",alignItems:"center",gap:10}}>
-<span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>API Key</span>
+<span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>Gemini API Key</span>
 <input style={{...z.inpM,maxWidth:200}} type="password" value={f.geminiApiKey||""} onChange={e=>setF({...f,geminiApiKey:e.target.value})} placeholder="AIzaSy..."/>
 </div>
 <div style={{fontSize:"0.58rem",color:C.t3,marginTop:4}}>Obtén tu key gratis en <a href="https://aistudio.google.com/apikey" target="_blank" style={{color:C.cyan}}>aistudio.google.com/apikey</a></div>
+</div>:<div>
+<div style={{display:"flex",alignItems:"center",gap:10}}>
+<span style={{flex:1,fontSize:"0.8rem",color:C.t2}}>Groq API Key</span>
+<input style={{...z.inpM,maxWidth:200}} type="password" value={f.groqApiKey||""} onChange={e=>setF({...f,groqApiKey:e.target.value})} placeholder="gsk_..."/>
+</div>
+<div style={{fontSize:"0.58rem",color:C.t3,marginTop:4}}>Obtén tu key gratis en <a href="https://console.groq.com/keys" target="_blank" style={{color:C.cyan}}>console.groq.com/keys</a> — Sin restricciones regionales</div>
+</div>}
+<div style={{marginTop:10,padding:"10px 12px",background:C.bg2,borderRadius:8,border:`1px solid ${C.b1}`}}>
+<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+<span style={{fontSize:"0.65rem",fontWeight:600,color:C.green}}>📦 Base de datos de alimentos</span>
+</div>
+<div style={{fontSize:"0.58rem",color:C.t2}}>Los macros ahora vienen de tu base de datos local ({FOOD_DB.length} alimentos de referencia). Gestiona tus alimentos personales desde el botón 🤖 → pestaña 📦 Alimentos.</div>
+</div>
 <div style={{marginTop:10}}>
 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
 <span style={{fontSize:"0.8rem",color:C.t2}}>Prompt personalizado</span>
@@ -1074,22 +1872,22 @@ return(<Mdl title="⚙ Configuración" onClose={onClose} ch={<div style={{displa
 /* === DAY TYPE EDITOR (grams, not multipliers) === */
 const DayTypeEditor=({onClose})=>{
 const[types,setTypes]=useState([...dayTypes]);const[ed,setEd]=useState(null);
-const[f,setF]=useState({name:"",emoji:"🏋️",color:"#b8f000",cal:2250,prot:170,carbs:220,fat:65,sugar:40,calMin:2250,calMax:2350});
+const[f,setF]=useState({name:"",emoji:"🏋️",color:"#b8f000",cal:2250,prot:170,carbs:220,fat:65,sugar:40,fiber:25,calMin:2250,calMax:2350});
 return(<Mdl title="🔧 Tipos de Día" onClose={onClose} wide ch={!ed?(<div>
 {types.map(t=>(<div key={t.id} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 0",borderBottom:`1px solid ${C.b1}`,flexWrap:"wrap"}}>
 <span style={{fontSize:"1rem"}}>{t.emoji}</span><span style={{flex:1,fontWeight:500,minWidth:80}}>{t.name}</span>
-<span style={{fontFamily:"monospace",fontSize:"0.58rem",color:C.t2}}>{t.cal}kcal {t.prot}P {t.carbs}C {t.fat}G ≤{t.sugar}S [{t.calMin}-{t.calMax}]</span>
+<span style={{fontFamily:"monospace",fontSize:"0.58rem",color:C.t2}}>{t.cal}kcal {t.prot}P {t.carbs}C {t.fat}G ≤{t.sugar}S {t.fiber||0}F [{t.calMin}-{t.calMax}]</span>
 <button style={z.btnS(false)} onClick={()=>{setEd(t.id);setF({...t})}}>✏️</button>
 <button style={z.btnD} onClick={()=>setTypes(types.filter(x=>x.id!==t.id))}>✕</button></div>))}
 <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>
-<button style={z.btn(false)} onClick={()=>{setEd("new");setF({name:"",emoji:"🏋️",color:"#b8f000",cal:2250,prot:170,carbs:220,fat:65,sugar:40,calMin:2250,calMax:2350})}}>+ Nuevo</button>
+<button style={z.btn(false)} onClick={()=>{setEd("new");setF({name:"",emoji:"🏋️",color:"#b8f000",cal:2250,prot:170,carbs:220,fat:65,sugar:40,fiber:25,calMin:2250,calMax:2350})}}>+ Nuevo</button>
 <button style={z.btn(true)} onClick={()=>{sv({...D,dayTypes:types});onClose()}}>Guardar</button></div>
 </div>):(<div style={{display:"flex",flexDirection:"column",gap:8}}>
 <div style={{fontSize:"0.85rem",fontWeight:600,color:C.t1}}>{ed==="new"?"Crear":"Editando: "+f.name}</div>
 {[["Nombre","name","text"],["Emoji","emoji","text"],["Color","color","color"]].map(([l,k,t])=>(<div key={k} style={{display:"flex",alignItems:"center",gap:8}}><span style={{width:110,fontSize:"0.76rem",color:C.t2}}>{l}</span><input style={{...z.inpM,maxWidth:t==="color"?55:160}} type={t} value={f[k]} onChange={e=>setF({...f,[k]:e.target.value})}/></div>))}
 <div style={{...z.lb,marginTop:6}}>Macros objetivo (gramos)</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(90px,1fr))",gap:8}}>
-{[["Calorías","cal"],["Proteína","prot"],["Carbos","carbs"],["Grasas","fat"],["Azúcar máx","sugar"]].map(([l,k])=>(<div key={k}><div style={{fontSize:"0.6rem",color:C.t3,marginBottom:3}}>{l}</div><input style={z.inpM} type="number" value={f[k]} onChange={e=>setF({...f,[k]:+e.target.value})}/></div>))}</div>
+{[["Calorías","cal"],["Proteína","prot"],["Carbos","carbs"],["Grasas","fat"],["Azúcar máx","sugar"],["Fibra","fiber"]].map(([l,k])=>(<div key={k}><div style={{fontSize:"0.6rem",color:C.t3,marginBottom:3}}>{l}</div><input style={z.inpM} type="number" value={f[k]} onChange={e=>setF({...f,[k]:+e.target.value})}/></div>))}</div>
 <div style={{...z.lb,marginTop:6}}>Rango Calorías para Compliance (K✓)</div>
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
 <div><div style={{fontSize:"0.6rem",color:C.t3,marginBottom:3}}>Min</div><input style={z.inpM} type="number" value={f.calMin} onChange={e=>setF({...f,calMin:+e.target.value})}/></div>
